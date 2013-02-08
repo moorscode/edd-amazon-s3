@@ -234,8 +234,8 @@ class EDD_Amazon_S3 {
 			jQuery(function($){
 				$('.insert-s3').on('click', function() {
 					var file = $(this).prev().data('s3');
-					parent.window.tb_remove();
 					$(parent.window.edd_formfield).val(file);
+					parent.window.tb_remove();
 				});
 			});
 			//]]>
@@ -258,7 +258,7 @@ class EDD_Amazon_S3 {
 
 					echo '<li class="media-item" style="margin-bottom:0;">';
 						echo '<span style="display:block;float:left;height:36px;line-height:36px;margin-left:8px;" data-s3="' . self::get_s3_url( $file['name'] ) . '">' . $file['name'] . '</span>';
-						echo '<button class="insert-s3 button-secondary" style="float:right;margin:8px 8px 0;">' . __('Use File', 'edd') . '</button>';
+						echo '<a class="insert-s3 button-secondary" href="#" style="float:right;margin:8px 8px 0;">' . __('Use File', 'edd') . '</a>';
 					echo '</li>';
 
 					$i++;
