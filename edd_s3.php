@@ -153,12 +153,8 @@ class EDD_Amazon_S3 {
 
 	public static function s3_tabs( $tabs ) {
 
-		$post_id = isset( $_REQUEST['post'] ) ? absint( $_REQUEST['post'] ) : 0;
-
-		if (  'download' == get_post_type( $post_id ) ) {
-			$tabs['s3'] = __( 'Upload to Amazon S3', 'edd' );
-			$tabs['s3_library'] = __( 'Amazon S3 Library', 'edd' );
-		}
+		$tabs['s3'] = __( 'Upload to Amazon S3', 'edd' );
+		$tabs['s3_library'] = __( 'Amazon S3 Library', 'edd' );
 
 		return $tabs;
 	}
