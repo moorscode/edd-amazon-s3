@@ -473,7 +473,7 @@ class EDD_Amazon_S3 {
 
 				});
 
-				window.edd_send_to_editor = window.send_to_editor;
+				window.edd_s3_send_to_editor = window.send_to_editor;
 				window.send_to_editor = function (html) {
 					if (window.edd_formfield) {
 						imgurl = $('a', '<div>' + html + '</div>').attr('href');
@@ -481,7 +481,7 @@ class EDD_Amazon_S3 {
 						window.clearInterval(window.tbframe_interval);
 						tb_remove();
 					} else {
-						window.edd_send_to_editor(html);
+						window.edd_s3_send_to_editor(html);
 					}
 					window.edd_formfield = '';
 					window.imagefield = false;
