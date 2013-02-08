@@ -191,6 +191,7 @@ class EDD_Amazon_S3 {
 					preloaded.each(function(){prepareMediaItem({id:this.id.replace(/[^0-9]/g, '')},'');});
 				}
 				updateMediaForm();
+
 			});
 			//]]>
 			</script>
@@ -466,9 +467,25 @@ class EDD_Amazon_S3 {
 		<script type="text/javascript">
 			//<![CDATA[
 			jQuery(function($){
-				$('body').on('click', '.edd_upload_image_button', function() {
+				$('body').on('click', '.edd_upload_image_button', function(e) {
+
 					window.edd_formfield = $(this).parent().prev();
+
 				});
+
+				window.edd_send_to_editor = window.send_to_editor;
+				window.send_to_editor = function (html) {
+					if (window.edd_formfield) {
+						imgurl = $('a', '<div>' + html + '</div>').attr('href');
+						window.edd_formfield.val(imgurl);
+						window.clearInterval(window.tbframe_interval);
+						tb_remove();
+					} else {
+						window.edd_send_to_editor(html);
+					}
+					window.edd_formfield = '';
+					window.imagefield = false;
+				}
 			});
 			//]]>
 		</script>
