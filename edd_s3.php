@@ -267,7 +267,7 @@ class EDD_Amazon_S3 {
 				echo '</ul>';
 			}
 
-			$base = admin_url( 'media-upload.php?post_id=' . $_GET['post_id'] . '&tab=s3_library' );
+			$base = admin_url( 'media-upload.php?post_id=' . absint( $_GET['post_id'] ) . '&tab=s3_library' );
 
 			echo '<div class="s3-pagination tablenav">';
 				echo '<div class="tablenav-pages alignright">';
