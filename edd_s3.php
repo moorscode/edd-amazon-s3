@@ -119,6 +119,9 @@ class EDD_Amazon_S3 {
 		add_action( 'media_upload_s3_library' , array( $this, 's3_library_iframe' ) );
 		add_filter( 'media_upload_default_tab', array( $this, 'default_tab' ) );
 
+		// Disable new WP 3.5 media manager
+		add_filter( 'edd_use_35_media_ui', '__return_false' );
+
 		//Adds settings to Misc Tab
 		add_filter( 'edd_settings_misc' , array( $this, 'add_misc_settings' ) );
 
@@ -420,7 +423,7 @@ class EDD_Amazon_S3 {
 		if ( 'upload' != $context )
 			return $file_array;
 
-		if ( 's3' != $_REQUEST['tab'] )
+		if ( 's3' != $_REQUEST['tab'] || ! isset( $_REQUEST['tab'] ) )
 			return $file_array;
 
 		$file = $file_array['file'];
@@ -438,7 +441,7 @@ class EDD_Amazon_S3 {
 
 	public static function add_post_meta( $att_id ) {
 
-		if ( 's3' != $_REQUEST['tab'] )
+		if ( 's3' != $_REQUEST['tab'] || ! isset( $_REQUEST['tab'] ) )
 			return;
 
 		//Get URL
@@ -447,6 +450,8 @@ class EDD_Amazon_S3 {
 		$s3_url = self::get_s3_url( basename( $on_site_url ) );
 
 		update_post_meta( $att_id, 's3_url', $s3_url );
+
+		return $att_id;
 	}
 
 	public static function default_tab( $default ) {
@@ -472,20 +477,6 @@ class EDD_Amazon_S3 {
 					window.edd_formfield = $(this).parent().prev();
 
 				});
-
-				window.edd_s3_send_to_editor = window.send_to_editor;
-				window.send_to_editor = function (html) {
-					if (window.edd_formfield) {
-						imgurl = $('a', '<div>' + html + '</div>').attr('href');
-						window.edd_formfield.val(imgurl);
-						window.clearInterval(window.tbframe_interval);
-						tb_remove();
-					} else {
-						window.edd_s3_send_to_editor(html);
-					}
-					window.edd_formfield = '';
-					window.imagefield = false;
-				}
 			});
 			//]]>
 		</script>
