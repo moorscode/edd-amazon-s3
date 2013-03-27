@@ -3,8 +3,8 @@
 Plugin Name: Easy Digital Downloads - Amazon S3
 Plugin URI: http://easydigitaldownloads.com/extension/amazon-s3/
 Description: Amazon S3 integration with EDD.  Allows you to upload or download directly from your S3 bucket. Configure on Settings > Misc tab
-Version: 1.3
-Author: Justin Sainton and Pippin Williamson
+Version: 1.4
+Author: Justin Sainton, Pippin Williamson & Brad Vincent
 Author URI:  http://www.zao.is
 Contributors: JustinSainton, mordauk
 */
@@ -15,6 +15,7 @@ class EDD_Amazon_S3 {
 	private static $access_id;
 	private static $secret_key;
 	private static $bucket;
+	private static $default_expiry;
 
 	/**
 	 * Get active object instance
@@ -48,7 +49,7 @@ class EDD_Amazon_S3 {
 		self::$access_id  = isset( $options['edd_amazon_s3_id'] )     ? trim( $options['edd_amazon_s3_id'] )     : '';
 		self::$secret_key = isset( $options['edd_amazon_s3_key'] )    ? trim( $options['edd_amazon_s3_key'] )    : '';
 		self::$bucket     = isset( $options['edd_amazon_s3_bucket'] ) ? trim( $options['edd_amazon_s3_bucket'] ) : '';
-
+		self::$default_expiry     = isset( $options['edd_amazon_s3_default_expiry'] ) ? trim( $options['edd_amazon_s3_default_expiry'] ) : '5';
 
 		$this->constants();
 		$this->includes();
@@ -67,7 +68,7 @@ class EDD_Amazon_S3 {
 	private function constants() {
 
 		// plugin version
-		define( 'EDD_AS3_VERSION', '1.3' );
+		define( 'EDD_AS3_VERSION', '1.4' );
 
 		// Set the core file path
 		define( 'EDD_AS3_FILE_PATH', dirname( __FILE__ ) );
@@ -79,7 +80,7 @@ class EDD_Amazon_S3 {
 		define( 'EDD_AS3_FOLDER'   , dirname( plugin_basename( __FILE__ ) ) );
 		define( 'EDD_AS3_URL'      , plugins_url( '', __FILE__ ) );
 
-		define( 'EDD_AS3_SL_STORE_API_URL', 'http://easydigitaldownloads.com' );
+		define( 'EDD_AS3_SL_STORE_API_URL', 'https://easydigitaldownloads.com' );
 		define( 'EDD_AS3_SL_PRODUCT_NAME', 'Amazon S3' );
 
 	}
@@ -135,13 +136,28 @@ class EDD_Amazon_S3 {
 		// modify the file name on download
 		add_filter( 'edd_requested_file_name', array( $this, 'requested_file_name' ) );
 
-		add_action('admin_head', array( $this, 'admin_js' ) );
+		// add some javascript to the admin
+		add_action( 'admin_head', array( $this, 'admin_js' ) );
+
+		// show a notice to users who have updated from a previous version of this plugin
+		add_action( 'admin_notices', array( $this, 'setup_admin_notice') );
+
+        //intercept the publishing of downloads and clear the admin notice
+        add_action( 'publish_download', array( $this, 'clear_admin_notice') );
 
 		// activate the license key
-		add_action( 'admin_init', array( $this, 'activate_license' ) );
+		add_action( 'admin_init', array( $this, 'activate_license') );
 
 		// retrieve our license key from the DB
 		$edd_sl_license_key = isset( $edd_options['edd_amazon_s3_license_key'] ) ? trim( $edd_options['edd_amazon_s3_license_key'] ) : '';
+
+        // alter the download file table to accept expiry
+		add_action( 'edd_download_file_table_head', array( $this, 'download_file_table_head' ) );
+		add_filter( 'edd_file_row_args', array( $this, 'download_file_row_args' ), 10, 2 );
+		add_action( 'edd_download_file_table_row', array( $this, 'download_file_table_row' ), 10, 3 );
+
+		// intercept the file download and generate an expiring link
+		add_filter( 'edd_requested_file', array( $this, 'generate_url' ), 10, 3 );
 
 		// setup the updater
 		$edd_updater = new EDD_SL_Plugin_Updater( EDD_AS3_SL_STORE_API_URL, __FILE__, array(
@@ -261,7 +277,7 @@ class EDD_Amazon_S3 {
 						$last_file = $key;
 
 					echo '<li class="media-item" style="margin-bottom:0;">';
-						echo '<span style="display:block;float:left;height:36px;line-height:36px;margin-left:8px;" data-s3="' . self::get_s3_url( $file['name'] ) . '">' . $file['name'] . '</span>';
+						echo '<span style="display:block;float:left;height:36px;line-height:36px;margin-left:8px;" data-s3="' . $file['name'] . '">' . $file['name'] . '</span>';
 						echo '<a class="insert-s3 button-secondary" href="#" style="float:right;margin:8px 8px 0;">' . __('Use File', 'edd') . '</a>';
 					echo '</li>';
 
@@ -347,7 +363,35 @@ class EDD_Amazon_S3 {
 					'type' => 'text'
 		);
 
+		$settings[] = array(
+					'id'   => 'edd_amazon_s3_default_expiry',
+					'name' => __( 'Link Expiry Time', 'edd' ),
+					'desc' => __( 'Amazon S3 links expire after a certain amount of time. This default number of minutes will be used when capturing file downloads, but can be overriden per file if needed.', 'edd' ),
+					'std' => '5',
+					'type' => 'text'
+		);
+
 		return $settings;
+	}
+
+	public static function download_file_table_head() {
+		?><th class="expiry" style="width: 5%; <?php echo $variable_display; ?>"><?php _e( 'Expires', 'edd' ); ?></th><?php
+	}
+
+	public static function download_file_row_args($args, $file) {
+		$expires = isset( $file['expires'] ) ? $file['expires'] : '';
+		$args['expires'] = $expires;
+		return $args;
+	}
+
+	public static function download_file_table_row($post_id, $key, $args) {
+		extract( $args, EXTR_SKIP );
+		if (empty($expires)) {
+			$expires = self::$default_expiry;
+		}
+		?><td>
+			<input type="text" class="edd_repeatable_name_field" name="edd_download_files[<?php echo $key; ?>][expires]" id="edd_download_files[<?php echo $key; ?>][expires]" value="<?php echo $expires; ?>" maxlength="3" style="width:30px" />
+		</td><?php
 	}
 
 	public static function activate_license() {
@@ -392,11 +436,11 @@ class EDD_Amazon_S3 {
 		return $contents;
 	}
 
-	public static function get_s3_url( $filename ) {
+	public static function get_s3_url( $filename, $expires = 5) {
 
 		$s3     = new S3( self::$access_id, self::$secret_key, is_ssl() );
 		$bucket = self::$bucket;
-		$url 	= $s3->getAuthenticatedURL( $bucket, $filename, ( 60 * 60 * 24 * 365 * 10 ), false, true );
+		$url 	= $s3->getAuthenticatedURL( $bucket, $filename, ( 60 * $expires ), false, is_ssl() );
 
 		return $url;
 	}
@@ -483,6 +527,106 @@ class EDD_Amazon_S3 {
 		<?php
 	}
 
+	public static function generate_url($file, $download_files, $file_key) {
+		$file_data = $download_files[$file_key];
+        $file_name = $file_data['file'];
+		$expires = intval( isset( $file_data['expires'] ) ? $file_data['expires'] : self::$default_expiry );
+		if ($expires == 0) $expires = self::$default_expiry;
+
+        if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+            //we are dealing with a URL prior to Amazon S3 extension 1.4
+            $file_name = self::cleanup_filename($file_name);
+
+            //if we still get back the old format then there is something wrong here and just return the old filename
+            if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+                return $file_name;
+            }
+        }
+
+		return self::get_s3_url($file_name , $expires );
+	}
+
+    public static function cleanup_filename($old_file_name) {
+        //strip all amazon querystrings
+        //strip amazon host from url
+
+        if ($url = parse_url($old_file_name)) {
+            return ltrim($url['path'], '/');
+        }
+
+        return $old_file_name;
+    }
+
+    public static function clear_admin_notice() {
+        $option = get_option('edd_s3_upgrade_to_1_4', false);
+        if ($option !== true) {
+            delete_option('edd_s3_upgrade_to_1_4');
+        }
+    }
+
+	public static function setup_admin_notice() {
+		//first check if we need to show the notice at all
+        $option = get_option('edd_s3_upgrade_to_1_4', false);
+
+		if ($option === false) {
+
+			//check to see if we have any downloads with files that are stored using Amazon S3
+
+			//get all downloads
+			$args = array(
+				'post_type' => 'download',
+				'post_status' => 'publish',
+				'numberposts' => -1
+			);
+			$downloads = get_posts($args);
+
+			$files_that_need_updating = array();
+
+			foreach ($downloads as $download) {
+				$files = edd_get_download_files($download->ID);
+				foreach ($files as $file) {
+					$url = $file['file'];
+                    if( false !== ( strpos( $url, 'AWSAccessKeyId' ) ) ) {
+						if (!array_key_exists($download->ID, $files_that_need_updating)) {
+							$files_that_need_updating[$download->ID] = array(
+							    'ID' => $download->ID,
+							    'Title' => $download->post_title,
+							    'Files' => array()
+							);
+						}
+						$files_that_need_updating[$download->ID]['Files'][] = $file;
+					}
+				}
+			}
+
+			if (count($files_that_need_updating) > 0) {
+
+
+				//we need to show an admin message
+                $message = '<div class="error"><p>';
+                $message .= '<strong>' . __('Easy Digital Downloads - Amazon S3 Extension Notice :', 'edd') . '</strong><br />';
+                $message .= sprintf( __('%s download(s) have invalid Amazon S3 URLs and need to be updated as soon as possible!', 'edd'), count($files_that_need_updating) );
+				foreach ($files_that_need_updating as $download) {
+                    $message .= '<br /><a href="post.php?post='.$download['ID'].'&action=edit">' . $download['Title'] . '</a> : ';
+					$files = array();
+					foreach ($download['Files'] as $file) {
+						$files[] = $file['name'];
+					}
+
+                    $message .= implode(',', $files);
+				}
+                $message .= '</p></div>';
+                add_option('edd_s3_upgrade_to_1_4', $message);
+                echo $message;
+
+			}
+		} else if ($option === true) {
+            //we dont need to update any URLs so do not perform this check again
+        } else {
+            //we have previously generated the message
+            echo $option;
+        }
+	}
 }
 
 $GLOBALS['edd_s3'] = new EDD_Amazon_S3();
