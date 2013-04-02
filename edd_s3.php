@@ -530,28 +530,33 @@ class EDD_Amazon_S3 {
 	public static function generate_url($file, $download_files, $file_key) {
 		$file_data = $download_files[$file_key];
         $file_name = $file_data['file'];
-		$expires = intval( isset( $file_data['expires'] ) ? $file_data['expires'] : self::$default_expiry );
-		if ($expires == 0) $expires = self::$default_expiry;
 
-        if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
-            //we are dealing with a URL prior to Amazon S3 extension 1.4
-            $file_name = self::cleanup_filename($file_name);
+		// New Amazon files do not have any slashes
+        if( false === ( strpos( $file_name, '/' ) ) || false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
 
-            //if we still get back the old format then there is something wrong here and just return the old filename
-            if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
-                return $file_name;
-            }
-        }
+			$expires = intval( isset( $file_data['expires'] ) ? $file_data['expires'] : self::$default_expiry );
+			if ($expires == 0) $expires = self::$default_expiry;
 
-		return self::get_s3_url($file_name , $expires );
+	        if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+	            //we are dealing with a URL prior to Amazon S3 extension 1.4
+	            $file_name = self::cleanup_filename($file_name);
+
+	            //if we still get back the old format then there is something wrong here and just return the old filename
+	            if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+	                return $file_name;
+	            }
+	        }
+			return self::get_s3_url($file_name , $expires );
+	    }
+	    return $file;
 	}
 
     public static function cleanup_filename($old_file_name) {
         //strip all amazon querystrings
         //strip amazon host from url
 
-        if ($url = parse_url($old_file_name)) {
-            return ltrim($url['path'], '/');
+        if ( $url = parse_url( $old_file_name ) ) {
+            return ltrim( $url['path'], '/' );
         }
 
         return $old_file_name;
@@ -559,16 +564,16 @@ class EDD_Amazon_S3 {
 
     public static function clear_admin_notice() {
         $option = get_option('edd_s3_upgrade_to_1_4', false);
-        if ($option !== true) {
-            delete_option('edd_s3_upgrade_to_1_4');
+        if ( $option !== true ) {
+            delete_option('edd_s3_upgrade_to_1_4' );
         }
     }
 
 	public static function setup_admin_notice() {
 		//first check if we need to show the notice at all
-        $option = get_option('edd_s3_upgrade_to_1_4', false);
+        $option = get_option( 'edd_s3_upgrade_to_1_4', false );
 
-		if ($option === false) {
+		if ( $option === false ) {
 
 			//check to see if we have any downloads with files that are stored using Amazon S3
 
