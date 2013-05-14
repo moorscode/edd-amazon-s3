@@ -148,6 +148,9 @@ class EDD_Amazon_S3 {
 		// activate the license key
 		add_action( 'admin_init', array( $this, 'activate_license') );
 
+		// deactivate the license key
+		add_action( 'admin_init', array( $this, 'deactivate_license') );
+
 		// retrieve our license key from the DB
 		$edd_sl_license_key = isset( $edd_options['edd_amazon_s3_license_key'] ) ? trim( $edd_options['edd_amazon_s3_license_key'] ) : '';
 
@@ -336,8 +339,9 @@ class EDD_Amazon_S3 {
 					'id' => 'edd_amazon_s3_license_key',
 					'name' => __('License Key', 'edd_et'),
 					'desc' => __('Enter your license for Amazon S3 to receive automatic upgrades', 'edd_sl'),
-					'type' => 'text',
-					'size' => 'regular'
+					'type' => 'license_key',
+					'size' => 'regular',
+					'options' => array( 'is_valid_license_option' => 'edd_amazon_s3_license_active' )
 		);
 
 		$settings[] = array(
@@ -425,6 +429,49 @@ class EDD_Amazon_S3 {
 
 		update_option( 'edd_amazon_s3_license_active', $license_data->license );
 
+	}
+
+	public function deactivate_license() {
+		global $edd_options;
+
+		if ( ! isset( $_POST['edd_settings_general'] ) )
+			return;
+
+		if ( ! isset( $_POST['edd_settings_general']['edd_amazon_s3_license_key'] ) )
+			return;
+
+		// listen for our activate button to be clicked
+		if( isset( $_POST['edd_amazon_s3_license_key_deactivate'] ) ) {
+
+		    // run a quick security check
+		    if( ! check_admin_referer( 'edd_amazon_s3_license_key_nonce', 'edd_amazon_s3_license_key_nonce' ) )
+		      return; // get out if we didn't click the Activate button
+
+		    // retrieve the license from the database
+		    $license = trim( $edd_options['edd_amazon_s3_license_key'] );
+
+		    // data to send in our API request
+		    $api_params = array(
+		      'edd_action'=> 'deactivate_license',
+		      'license'   => $license,
+		      'item_name' => urlencode( EDD_AS3_SL_PRODUCT_NAME ) // the name of our product in EDD
+		    );
+
+		    // Call the custom API.
+		    $response = wp_remote_get( add_query_arg( $api_params, EDD_AS3_SL_STORE_API_URL ), array( 'timeout' => 15, 'sslverify' => false ) );
+
+		    // make sure the response came back okay
+		    if ( is_wp_error( $response ) )
+		    	return false;
+
+		    // decode the license data
+		    $license_data = json_decode( wp_remote_retrieve_body( $response ) );
+
+		    // $license_data->license will be either "deactivated" or "failed"
+		    if( $license_data->license == 'deactivated' )
+		    	delete_option( 'edd_amazon_s3_license_active' );
+
+		}
 	}
 
 	public static function get_s3_files( $marker = null, $max = null ) {
@@ -635,3 +682,31 @@ class EDD_Amazon_S3 {
 }
 
 $GLOBALS['edd_s3'] = new EDD_Amazon_S3();
+
+
+
+/**
+ * Registers the new license field type
+ *
+ * @access      private
+ * @since       1.4.2
+ * @return      void
+*/
+
+if( ! function_exists( 'edd_license_key_callback' ) ) {
+	function edd_license_key_callback( $args ) {
+		global $edd_options;
+
+		if( isset( $edd_options[ $args['id'] ] ) ) { $value = $edd_options[ $args['id'] ]; } else { $value = isset( $args['std'] ) ? $args['std'] : ''; }
+		$size = isset( $args['size'] ) && !is_null($args['size']) ? $args['size'] : 'regular';
+		$html = '<input type="text" class="' . $args['size'] . '-text" id="edd_settings_' . $args['section'] . '[' . $args['id'] . ']" name="edd_settings_' . $args['section'] . '[' . $args['id'] . ']" value="' . esc_attr( $value ) . '"/>';
+
+		if( 'valid' == get_option( $args['options']['is_valid_license_option'] ) ) {
+			$html .= wp_nonce_field( $args['id'] . '_nonce', $args['id'] . '_nonce', false );
+			$html .= '<input type="submit" class="button-secondary" name="' . $args['id'] . '_deactivate" value="' . __( 'Deactivate License',  'edd-recurring' ) . '"/>';
+		}
+		$html .= '<label for="edd_settings_' . $args['section'] . '[' . $args['id'] . ']"> '  . $args['desc'] . '</label>';
+
+		echo $html;
+	}
+}
