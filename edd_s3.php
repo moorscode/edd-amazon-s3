@@ -279,6 +279,9 @@ class EDD_Amazon_S3 {
 					if( $i == 14 )
 						$last_file = $key;
 
+					if( strpos( $file['name'], '.' ) === false )
+						continue; // Don't show folders
+
 					echo '<li class="media-item" style="margin-bottom:0;">';
 						echo '<span style="display:block;float:left;height:36px;line-height:36px;margin-left:8px;" data-s3="' . $file['name'] . '">' . $file['name'] . '</span>';
 						echo '<a class="insert-s3 button-secondary" href="#" style="float:right;margin:8px 8px 0;">' . __('Use File', 'edd') . '</a>';
@@ -434,10 +437,10 @@ class EDD_Amazon_S3 {
 	public function deactivate_license() {
 		global $edd_options;
 
-		if ( ! isset( $_POST['edd_settings_general'] ) )
+		if ( ! isset( $_POST['edd_settings_misc'] ) )
 			return;
 
-		if ( ! isset( $_POST['edd_settings_general']['edd_amazon_s3_license_key'] ) )
+		if ( ! isset( $_POST['edd_settings_misc']['edd_amazon_s3_license_key'] ) )
 			return;
 
 		// listen for our activate button to be clicked
