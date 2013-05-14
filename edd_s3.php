@@ -582,7 +582,7 @@ class EDD_Amazon_S3 {
         $file_name = $file_data['file'];
 
 		// New Amazon files do not have any slashes
-        if( false === ( strpos( $file_name, '/' ) ) || false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+        if( ( '/' !== $file_name[0] && strpos( $file_data['file'], 'http://' ) === false && strpos( $file_data['file'], 'https://' ) === false && strpos( $file_data['file'], 'ftp://' ) === false )|| false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
 
 			$expires = intval( isset( $file_data['expires'] ) ? $file_data['expires'] : self::$default_expiry );
 			if ($expires == 0) $expires = self::$default_expiry;
