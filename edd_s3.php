@@ -136,6 +136,9 @@ class EDD_Amazon_S3 {
 		// modify the file name on download
 		add_filter( 'edd_requested_file_name', array( $this, 'requested_file_name' ) );
 
+		// intercept the file download and generate an expiring link
+		add_filter( 'edd_requested_file', array( $this, 'generate_url' ), 10, 3 );
+
 		// add some javascript to the admin
 		add_action( 'admin_head', array( $this, 'admin_js' ) );
 
@@ -158,9 +161,6 @@ class EDD_Amazon_S3 {
 		add_action( 'edd_download_file_table_head', array( $this, 'download_file_table_head' ) );
 		add_filter( 'edd_file_row_args', array( $this, 'download_file_row_args' ), 10, 2 );
 		add_action( 'edd_download_file_table_row', array( $this, 'download_file_table_row' ), 10, 3 );
-
-		// intercept the file download and generate an expiring link
-		add_filter( 'edd_requested_file', array( $this, 'generate_url' ), 10, 3 );
 
 		// setup the updater
 		$edd_updater = new EDD_SL_Plugin_Updater( EDD_AS3_SL_STORE_API_URL, __FILE__, array(
