@@ -375,7 +375,7 @@ class EDD_Amazon_S3 {
 	}
 
 	public static function download_file_table_head() {
-		?><th class="expiry" style="width: 5%; <?php echo $variable_display; ?>"><?php _e( 'Expires', 'edd' ); ?></th><?php
+		?><th class="expiry" style="width: 5%;"><?php _e( 'Expires', 'edd' ); ?></th><?php
 	}
 
 	public static function download_file_row_args($args, $file) {
