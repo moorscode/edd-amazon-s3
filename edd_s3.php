@@ -569,6 +569,11 @@ class EDD_Amazon_S3 {
 		return $file_name;
 	}
 
+	public static function get_host() {
+		global $edd_options;
+		return ! empty( $edd_options['edd_amazon_s3_host'] ) ? trim( $edd_options['edd_amazon_s3_host'] ) : 's3.amazonaws.com';
+	}
+
 	public static function admin_js() {
 		?>
 		<script type="text/javascript">
