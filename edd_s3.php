@@ -517,7 +517,7 @@ class EDD_Amazon_S3 {
 		if ( 'upload' != $context )
 			return $file_array;
 
-		if ( 's3' != $_REQUEST['tab'] || ! isset( $_REQUEST['tab'] ) )
+		if( ( isset( $_REQUEST['tab'] ) && $_REQUEST['tab'] != 's3' ) || ! isset( $_REQUEST['tab'] ) )
 			return $file_array;
 
 		$file = $file_array['file'];
