@@ -487,7 +487,7 @@ class EDD_Amazon_S3 {
 
 	public static function get_s3_files( $marker = null, $max = null ) {
 
-		$s3       = new S3( self::$access_id, self::$secret_key, is_ssl() );
+		$s3       = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
 		$bucket   = self::$bucket;
 		$contents = $s3->getBucket( $bucket, null, $marker, $max );
 
@@ -496,7 +496,7 @@ class EDD_Amazon_S3 {
 
 	public static function get_s3_url( $filename, $expires = 5) {
 
-		$s3     = new S3( self::$access_id, self::$secret_key, is_ssl() );
+		$s3     = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
 		$bucket = self::$bucket;
 		$url 	= $s3->getAuthenticatedURL( $bucket, $filename, ( 60 * $expires ), false, is_ssl() );
 
@@ -532,7 +532,7 @@ class EDD_Amazon_S3 {
 		$url  = $file_array['url'];
 		$type = $file_array['type'];
 
-		$s3       = new S3( self::$access_id, self::$secret_key, false );
+		$s3       = new S3( self::$access_id, self::$secret_key, false, self::get_host() );
 		$bucket   = self::$bucket;
 		$resource = $s3->inputFile( $file );
 		$resource['type'] = $type;
