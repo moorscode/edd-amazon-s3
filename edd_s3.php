@@ -371,6 +371,14 @@ class EDD_Amazon_S3 {
 		);
 
 		$settings[] = array(
+					'id'   => 'edd_amazon_s3_host',
+					'name' => __( 'Amazon S3 Host', 'edd' ),
+					'desc' => __( 'Set the host you wish to use. Leave default if you do not know what this is for', 'edd_s3' ),
+					'type' => 'text',
+					'std'  => 's3.amazonaws.com'
+		);
+
+		$settings[] = array(
 					'id'   => 'edd_amazon_s3_default_expiry',
 					'name' => __( 'Link Expiry Time', 'edd' ),
 					'desc' => __( 'Amazon S3 links expire after a certain amount of time. This default number of minutes will be used when capturing file downloads, but can be overriden per file if needed.', 'edd' ),
