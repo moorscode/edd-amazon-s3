@@ -3,7 +3,7 @@
 Plugin Name: Easy Digital Downloads - Amazon S3
 Plugin URI: http://easydigitaldownloads.com/extension/amazon-s3/
 Description: Amazon S3 integration with EDD.  Allows you to upload or download directly from your S3 bucket. Configure on Settings > Misc tab
-Version: 1.6
+Version: 1.6.1
 Author: Justin Sainton, Pippin Williamson & Brad Vincent
 Author URI:  http://www.zao.is
 Contributors: JustinSainton, mordauk
@@ -68,7 +68,7 @@ class EDD_Amazon_S3 {
 	private function constants() {
 
 		// plugin version
-		define( 'EDD_AS3_VERSION', '1.6' );
+		define( 'EDD_AS3_VERSION', '1.6.1' );
 
 		// Set the core file path
 		define( 'EDD_AS3_FILE_PATH', dirname( __FILE__ ) );
@@ -496,6 +496,8 @@ class EDD_Amazon_S3 {
 
 	public static function get_s3_url( $filename, $expires = 5) {
 
+		// Not used anymore but here for reference
+
 		$s3     = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
 		$bucket = self::$bucket;
 		$url 	= $s3->getAuthenticatedURL( $bucket, $filename, ( 60 * $expires ), false, is_ssl() );
@@ -549,7 +551,8 @@ class EDD_Amazon_S3 {
 		//Get URL
 		$on_site_url = wp_get_attachment_url( $att_id );
 
-		$s3_url = self::get_s3_url( basename( $on_site_url ) );
+		//$s3_url = self::get_s3_url( basename( $on_site_url ) );
+		$s3_url = basename( $on_site_url );
 
 		update_post_meta( $att_id, 's3_url', $s3_url );
 
