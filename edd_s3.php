@@ -162,15 +162,17 @@ class EDD_Amazon_S3 {
 		add_filter( 'edd_file_row_args', array( $this, 'download_file_row_args' ), 10, 2 );
 		add_action( 'edd_download_file_table_row', array( $this, 'download_file_table_row' ), 10, 3 );
 
-		// setup the updater
-		$edd_updater = new EDD_SL_Plugin_Updater( EDD_AS3_SL_STORE_API_URL, __FILE__, array(
-				'version' 	=> EDD_AS3_VERSION, 			// current version number
-				'license' 	=> $edd_sl_license_key, 		// license key (used get_option above to retrieve from DB)
-				'item_name' => EDD_AS3_SL_PRODUCT_NAME, 	// name of this plugin
-				'author' 	=> 'Pippin Williamson'  		// author of this plugin
-			)
-		);
+		if( ! empty( $edd_sl_license_key ) ) {
 
+			// setup the updater
+			$edd_updater = new EDD_SL_Plugin_Updater( EDD_AS3_SL_STORE_API_URL, __FILE__, array(
+					'version' 	=> EDD_AS3_VERSION, 			// current version number
+					'license' 	=> $edd_sl_license_key, 		// license key (used get_option above to retrieve from DB)
+					'item_name' => EDD_AS3_SL_PRODUCT_NAME, 	// name of this plugin
+					'author' 	=> 'Pippin Williamson'  		// author of this plugin
+				)
+			);
+		}
 	}
 
 	public static function s3_tabs( $tabs ) {
