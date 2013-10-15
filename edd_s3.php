@@ -3,7 +3,7 @@
 Plugin Name: Easy Digital Downloads - Amazon S3
 Plugin URI: http://easydigitaldownloads.com/extension/amazon-s3/
 Description: Amazon S3 integration with EDD.  Allows you to upload or download directly from your S3 bucket. Configure on Settings > Misc tab
-Version: 1.6.1
+Version: 1.6.2
 Author: Justin Sainton, Pippin Williamson & Brad Vincent
 Author URI:  http://www.zao.is
 Contributors: JustinSainton, mordauk
@@ -44,12 +44,14 @@ class EDD_Amazon_S3 {
 	 */
 	public function __construct() {
 
-		$options          = get_option( 'edd_settings_misc' ) ;
+		global $edd_options;
 
-		self::$access_id  = isset( $options['edd_amazon_s3_id'] )     ? trim( $options['edd_amazon_s3_id'] )     : '';
-		self::$secret_key = isset( $options['edd_amazon_s3_key'] )    ? trim( $options['edd_amazon_s3_key'] )    : '';
-		self::$bucket     = isset( $options['edd_amazon_s3_bucket'] ) ? trim( $options['edd_amazon_s3_bucket'] ) : '';
-		self::$default_expiry     = isset( $options['edd_amazon_s3_default_expiry'] ) ? trim( $options['edd_amazon_s3_default_expiry'] ) : '5';
+
+
+		self::$access_id  = isset( $edd_options['edd_amazon_s3_id'] )     ? trim( $edd_options['edd_amazon_s3_id'] )     : '';
+		self::$secret_key = isset( $edd_options['edd_amazon_s3_key'] )    ? trim( $edd_options['edd_amazon_s3_key'] )    : '';
+		self::$bucket     = isset( $edd_options['edd_amazon_s3_bucket'] ) ? trim( $edd_options['edd_amazon_s3_bucket'] ) : '';
+		self::$default_expiry     = isset( $edd_options['edd_amazon_s3_default_expiry'] ) ? trim( $edd_options['edd_amazon_s3_default_expiry'] ) : '5';
 
 		$this->constants();
 		$this->includes();
@@ -68,7 +70,7 @@ class EDD_Amazon_S3 {
 	private function constants() {
 
 		// plugin version
-		define( 'EDD_AS3_VERSION', '1.6.1' );
+		define( 'EDD_AS3_VERSION', '1.6.2' );
 
 		// Set the core file path
 		define( 'EDD_AS3_FILE_PATH', dirname( __FILE__ ) );
