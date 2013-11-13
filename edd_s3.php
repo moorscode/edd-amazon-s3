@@ -657,24 +657,26 @@ class EDD_Amazon_S3 {
 
 			$files_that_need_updating = array();
 
-			foreach ($downloads as $download) {
-				$files = edd_get_download_files($download->ID);
-				foreach ($files as $file) {
-					$url = $file['file'];
-                    if( false !== ( strpos( $url, 'AWSAccessKeyId' ) ) ) {
-						if (!array_key_exists($download->ID, $files_that_need_updating)) {
-							$files_that_need_updating[$download->ID] = array(
-							    'ID' => $download->ID,
-							    'Title' => $download->post_title,
-							    'Files' => array()
-							);
+			foreach ( $downloads as $download ) {
+				$files = edd_get_download_files( $download->ID );
+				if( $files && is_array( $files ) ) {
+					foreach ( $files as $file ) {
+						$url = $file['file'];
+	                    if( false !== ( strpos( $url, 'AWSAccessKeyId' ) ) ) {
+							if ( ! array_key_exists( $download->ID, $files_that_need_updating ) ) {
+								$files_that_need_updating[$download->ID] = array(
+								    'ID' => $download->ID,
+								    'Title' => $download->post_title,
+								    'Files' => array()
+								);
+							}
+							$files_that_need_updating[$download->ID]['Files'][] = $file;
 						}
-						$files_that_need_updating[$download->ID]['Files'][] = $file;
 					}
 				}
 			}
 
-			if (count($files_that_need_updating) > 0) {
+			if ( count( $files_that_need_updating ) > 0 ) {
 
 
 				//we need to show an admin message
