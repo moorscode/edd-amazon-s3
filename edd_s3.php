@@ -483,7 +483,7 @@ class EDD_Amazon_S3 {
 		<script type="text/javascript">
 			//<![CDATA[
 			jQuery(function($){
-				$('body').on('click', '.edd_upload_image_button', function(e) {
+				$('body').on('click', '.edd_upload_file_button', function(e) {
 
 					window.edd_formfield = $(this).parent().prev();
 
