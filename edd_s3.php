@@ -82,7 +82,6 @@ class EDD_Amazon_S3 {
 		define( 'EDD_AS3_FOLDER'   , dirname( plugin_basename( __FILE__ ) ) );
 		define( 'EDD_AS3_URL'      , plugins_url( '', __FILE__ ) );
 
-		define( 'EDD_AS3_SL_STORE_API_URL', 'https://easydigitaldownloads.com' );
 		define( 'EDD_AS3_SL_PRODUCT_NAME', 'Amazon S3' );
 
 	}
@@ -116,6 +115,10 @@ class EDD_Amazon_S3 {
 
 		global $edd_options;
 
+		if( class_exists( 'EDD_License' ) ) {
+			$eddmc_license = new EDD_License( __FILE__, EDD_AS3_SL_PRODUCT_NAME, EDD_AS3_VERSION, 'Pippin Williamson', 'edd_amazon_s3_license_key' );
+		}
+
 		//Adds Media Tab
 		add_filter( 'media_upload_tabs'       , array( $this, 's3_tabs' ) );
 		add_action( 'media_upload_s3'         , array( $this, 's3_iframe' ) );
@@ -126,7 +129,7 @@ class EDD_Amazon_S3 {
 		add_filter( 'edd_use_35_media_ui', '__return_false' );
 
 		//Adds settings to Misc Tab
-		add_filter( 'edd_settings_misc' , array( $this, 'add_misc_settings' ) );
+		add_filter( 'edd_settings_extensions' , array( $this, 'add_settings' ) );
 
 		//Handles Uploading to S3
 		add_filter( 'wp_handle_upload'  , array( $this, 'upload_handler' ), 10, 2 );
@@ -150,31 +153,10 @@ class EDD_Amazon_S3 {
         //intercept the publishing of downloads and clear the admin notice
         add_action( 'publish_download', array( $this, 'clear_admin_notice') );
 
-		// activate the license key
-		add_action( 'admin_init', array( $this, 'activate_license') );
-
-		// deactivate the license key
-		add_action( 'admin_init', array( $this, 'deactivate_license') );
-
-		// retrieve our license key from the DB
-		$edd_sl_license_key = isset( $edd_options['edd_amazon_s3_license_key'] ) ? trim( $edd_options['edd_amazon_s3_license_key'] ) : '';
-
         // alter the download file table to accept expiry
 		add_action( 'edd_download_file_table_head', array( $this, 'download_file_table_head' ) );
 		add_filter( 'edd_file_row_args', array( $this, 'download_file_row_args' ), 10, 2 );
 		add_action( 'edd_download_file_table_row', array( $this, 'download_file_table_row' ), 10, 3 );
-
-		if( ! empty( $edd_sl_license_key ) ) {
-
-			// setup the updater
-			$edd_updater = new EDD_SL_Plugin_Updater( EDD_AS3_SL_STORE_API_URL, __FILE__, array(
-					'version' 	=> EDD_AS3_VERSION, 			// current version number
-					'license' 	=> $edd_sl_license_key, 		// license key (used get_option above to retrieve from DB)
-					'item_name' => EDD_AS3_SL_PRODUCT_NAME, 	// name of this plugin
-					'author' 	=> 'Pippin Williamson'  		// author of this plugin
-				)
-			);
-		}
 	}
 
 	public static function s3_tabs( $tabs ) {
@@ -333,22 +315,13 @@ class EDD_Amazon_S3 {
 		wp_iframe( array( 'EDD_Amazon_S3', 's3_library_tab' ) );
 	}
 
-	public static function add_misc_settings( $settings ) {
+	public static function add_settings( $settings ) {
 
 		$settings[] = array(
 					'id'   => 'amazon_s3_settings',
 					'name' => __( '<strong>Amazon S3 Settings</strong>', 'edd' ),
 					'desc' => '',
 					'type' => 'header'
-		);
-
-		$settings[] = array(
-					'id' => 'edd_amazon_s3_license_key',
-					'name' => __('License Key', 'edd_et'),
-					'desc' => __('Enter your license for Amazon S3 to receive automatic upgrades', 'edd_sl'),
-					'type' => 'license_key',
-					'size' => 'regular',
-					'options' => array( 'is_valid_license_option' => 'edd_amazon_s3_license_active' )
 		);
 
 		$settings[] = array(
@@ -411,82 +384,6 @@ class EDD_Amazon_S3 {
 		?><td>
 			<input type="text" class="edd_repeatable_name_field" name="edd_download_files[<?php echo $key; ?>][expires]" id="edd_download_files[<?php echo $key; ?>][expires]" value="<?php echo $expires; ?>" maxlength="3" style="width:30px" />
 		</td><?php
-	}
-
-	public static function activate_license() {
-		global $edd_options;
-		if( ! isset( $_POST['edd_settings_misc'] ) )
-			return;
-		if( ! isset( $_POST['edd_settings_misc']['edd_amazon_s3_license_key'] ) )
-			return;
-
-		if( get_option( 'edd_amazon_s3_license_active' ) == 'valid' )
-			return;
-
-		$license = sanitize_text_field( $_POST['edd_settings_misc']['edd_amazon_s3_license_key'] );
-
-		// data to send in our API request
-		$api_params = array(
-			'edd_action'=> 'activate_license',
-			'license' 	=> $license,
-			'item_name' => urlencode( EDD_AS3_SL_PRODUCT_NAME ) // the name of our product in EDD
-		);
-
-		// Call the custom API.
-		$response = wp_remote_get( add_query_arg( $api_params, EDD_AS3_SL_STORE_API_URL ) );
-
-		// make sure the response came back okay
-		if ( is_wp_error( $response ) )
-			return false;
-
-		// decode the license data
-		$license_data = json_decode( wp_remote_retrieve_body( $response ) );
-
-		update_option( 'edd_amazon_s3_license_active', $license_data->license );
-
-	}
-
-	public function deactivate_license() {
-		global $edd_options;
-
-		if ( ! isset( $_POST['edd_settings_misc'] ) )
-			return;
-
-		if ( ! isset( $_POST['edd_settings_misc']['edd_amazon_s3_license_key'] ) )
-			return;
-
-		// listen for our activate button to be clicked
-		if( isset( $_POST['edd_amazon_s3_license_key_deactivate'] ) ) {
-
-		    // run a quick security check
-		    if( ! check_admin_referer( 'edd_amazon_s3_license_key_nonce', 'edd_amazon_s3_license_key_nonce' ) )
-		      return; // get out if we didn't click the Activate button
-
-		    // retrieve the license from the database
-		    $license = trim( $edd_options['edd_amazon_s3_license_key'] );
-
-		    // data to send in our API request
-		    $api_params = array(
-		      'edd_action'=> 'deactivate_license',
-		      'license'   => $license,
-		      'item_name' => urlencode( EDD_AS3_SL_PRODUCT_NAME ) // the name of our product in EDD
-		    );
-
-		    // Call the custom API.
-		    $response = wp_remote_get( add_query_arg( $api_params, EDD_AS3_SL_STORE_API_URL ), array( 'timeout' => 15, 'sslverify' => false ) );
-
-		    // make sure the response came back okay
-		    if ( is_wp_error( $response ) )
-		    	return false;
-
-		    // decode the license data
-		    $license_data = json_decode( wp_remote_retrieve_body( $response ) );
-
-		    // $license_data->license will be either "deactivated" or "failed"
-		    if( $license_data->license == 'deactivated' )
-		    	delete_option( 'edd_amazon_s3_license_active' );
-
-		}
 	}
 
 	public static function get_s3_files( $marker = null, $max = null ) {
