@@ -99,8 +99,6 @@ class EDD_Amazon_S3 {
 		if ( ! class_exists( 'S3' ) )
 			include_once EDD_AS3_FILE_PATH . '/s3.php';
 
-		if( !class_exists( 'EDD_SL_Plugin_Updater' ) )
-			include EDD_AS3_FILE_PATH . '/EDD_SL_Plugin_Updater.php';
 	}
 
 	/**
