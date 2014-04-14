@@ -46,7 +46,9 @@ class EDD_Amazon_S3 {
 
 		global $edd_options;
 
-
+		if( ! class_exists( 'Easy_Digital_Downloads' ) ) {
+			return;
+		}
 
 		self::$access_id  = isset( $edd_options['edd_amazon_s3_id'] )     ? trim( $edd_options['edd_amazon_s3_id'] )     : '';
 		self::$secret_key = isset( $edd_options['edd_amazon_s3_key'] )    ? trim( $edd_options['edd_amazon_s3_key'] )    : '';
@@ -96,9 +98,9 @@ class EDD_Amazon_S3 {
 	 */
 	private function includes() {
 
-		if ( ! class_exists( 'S3' ) )
+		if ( ! class_exists( 'S3' ) ) {
 			include_once EDD_AS3_FILE_PATH . '/s3.php';
-
+		}
 	}
 
 	/**
@@ -601,7 +603,10 @@ class EDD_Amazon_S3 {
 	}
 }
 
-$GLOBALS['edd_s3'] = new EDD_Amazon_S3();
+function edd_s3_load() {
+	$GLOBALS['edd_s3'] = new EDD_Amazon_S3();
+}
+add_action( 'plugins_loaded', 'edd_s3_load' );
 
 
 
