@@ -3,7 +3,7 @@
 Plugin Name: Easy Digital Downloads - Amazon S3
 Plugin URI: http://easydigitaldownloads.com/extension/amazon-s3/
 Description: Amazon S3 integration with EDD.  Allows you to upload or download directly from your S3 bucket. Configure on Settings > Misc tab
-Version: 1.7.1
+Version: 2.0
 Author: Justin Sainton, Pippin Williamson & Brad Vincent
 Author URI:  http://www.zao.is
 Contributors: JustinSainton, mordauk
@@ -50,10 +50,10 @@ class EDD_Amazon_S3 {
 			return;
 		}
 
-		self::$access_id  = isset( $edd_options['edd_amazon_s3_id'] )     ? trim( $edd_options['edd_amazon_s3_id'] )     : '';
-		self::$secret_key = isset( $edd_options['edd_amazon_s3_key'] )    ? trim( $edd_options['edd_amazon_s3_key'] )    : '';
-		self::$bucket     = isset( $edd_options['edd_amazon_s3_bucket'] ) ? trim( $edd_options['edd_amazon_s3_bucket'] ) : '';
-		self::$default_expiry     = isset( $edd_options['edd_amazon_s3_default_expiry'] ) ? trim( $edd_options['edd_amazon_s3_default_expiry'] ) : '5';
+		self::$access_id      = isset( $edd_options['edd_amazon_s3_id'] )             ? trim( $edd_options['edd_amazon_s3_id'] )             : '';
+		self::$secret_key     = isset( $edd_options['edd_amazon_s3_key'] )            ? trim( $edd_options['edd_amazon_s3_key'] )            : '';
+		self::$bucket         = isset( $edd_options['edd_amazon_s3_bucket'] )         ? trim( $edd_options['edd_amazon_s3_bucket'] )         : '';
+		self::$default_expiry = isset( $edd_options['edd_amazon_s3_default_expiry'] ) ? trim( $edd_options['edd_amazon_s3_default_expiry'] ) : '5';
 
 		$this->constants();
 		$this->includes();
@@ -72,7 +72,7 @@ class EDD_Amazon_S3 {
 	private function constants() {
 
 		// plugin version
-		define( 'EDD_AS3_VERSION', '1.7.1' );
+		define( 'EDD_AS3_VERSION', '2.0' );
 
 		// Set the core file path
 		define( 'EDD_AS3_FILE_PATH', dirname( __FILE__ ) );
@@ -113,30 +113,20 @@ class EDD_Amazon_S3 {
 	 */
 	private function init() {
 
-		global $edd_options;
-
 		if( class_exists( 'EDD_License' ) ) {
-			$eddmc_license = new EDD_License( __FILE__, EDD_AS3_SL_PRODUCT_NAME, EDD_AS3_VERSION, 'Pippin Williamson', 'edd_amazon_s3_license_key' );
+			$edds3_license = new EDD_License( __FILE__, EDD_AS3_SL_PRODUCT_NAME, EDD_AS3_VERSION, 'Pippin Williamson', 'edd_amazon_s3_license_key' );
 		}
 
 		//Adds Media Tab
 		add_filter( 'media_upload_tabs'       , array( $this, 's3_tabs' ) );
-		add_action( 'media_upload_s3'         , array( $this, 's3_iframe' ) );
+		add_action( 'media_upload_s3'         , array( $this, 's3_upload_download_tab' ) );
 		add_action( 'media_upload_s3_library' , array( $this, 's3_library_iframe' ) );
-		add_filter( 'media_upload_default_tab', array( $this, 'default_tab' ) );
-
-		// Disable new WP 3.5 media manager
-		add_filter( 'edd_use_35_media_ui', '__return_false' );
 
 		//Adds settings to Misc Tab
 		add_filter( 'edd_settings_extensions' , array( $this, 'add_settings' ) );
 
 		//Handles Uploading to S3
-		add_filter( 'wp_handle_upload'  , array( $this, 'upload_handler' ), 10, 2 );
-		add_action( 'add_attachment'    , array( $this, 'add_post_meta' ) );
-
-		//Low-level filter for URLs
-		add_filter( 'wp_get_attachment_url', array( $this, 'url_intercept' ), 10, 2 );
+		add_filter( 'edd_s3_upload'  , array( $this, 'upload_handler' ), 10, 2 );
 
 		// modify the file name on download
 		add_filter( 'edd_requested_file_name', array( $this, 'requested_file_name' ) );
@@ -153,155 +143,36 @@ class EDD_Amazon_S3 {
         //intercept the publishing of downloads and clear the admin notice
         add_action( 'publish_download', array( $this, 'clear_admin_notice') );
 
-        // alter the download file table to accept expiry
-		add_action( 'edd_download_file_table_head', array( $this, 'download_file_table_head' ) );
-		add_filter( 'edd_file_row_args', array( $this, 'download_file_row_args' ), 10, 2 );
-		add_action( 'edd_download_file_table_row', array( $this, 'download_file_table_row' ), 10, 3 );
 	}
 
 	public static function s3_tabs( $tabs ) {
 
-		$tabs['s3'] = __( 'Upload to Amazon S3', 'edd' );
-		$tabs['s3_library'] = __( 'Amazon S3 Library', 'edd' );
+		$tabs['s3']         = __( 'Upload to Amazon S3', 'edd_s3' );
+		$tabs['s3_library'] = __( 'Amazon S3 Library', 'edd_s3' );
 
 		return $tabs;
 	}
 
 	public static function s3_upload_download_tab( $type = 'file', $errors = null, $id = null ) {
 
-		media_upload_header();
-		wp_enqueue_style( 'media' );
-
-		$post_id = isset( $_REQUEST['post_id'] ) ? intval( $_REQUEST['post_id'] ) : 0;
-
-		$form_action_url = admin_url( "media-upload.php?type=$type&tab=s3&post_id=$post_id" );
-		$form_action_url = apply_filters( 'media_upload_form_url', $form_action_url, $type );
-		$form_class = 'media-upload-form type-form validate';
-
-		if ( get_user_setting('uploader') )
-			$form_class .= ' html-uploader';
-		?>
-
-		<form enctype="multipart/form-data" method="post" action="<?php echo esc_attr( $form_action_url ); ?>" class="<?php echo $form_class; ?>" id="<?php echo $type; ?>-form">
-			<?php submit_button( '', 'hidden', 'save', false ); ?>
-			<input type="hidden" name="post_id" id="post_id" value="<?php echo (int) $post_id; ?>" />
-			<?php wp_nonce_field('media-form'); ?>
-
-			<h3 class="media-title"><?php _e( 'Add media files to Amazon S3 from your computer', 'edd' ); ?></h3>
-
-			<?php media_upload_form( $errors ); ?>
-
-			<script type="text/javascript">
-			//<![CDATA[
-			jQuery(function($){
-				var preloaded = $(".media-item.preloaded");
-				if ( preloaded.length > 0 ) {
-					preloaded.each(function(){prepareMediaItem({id:this.id.replace(/[^0-9]/g, '')},'');});
-				}
-				updateMediaForm();
-
-			});
-			//]]>
-			</script>
-			<div id="media-items"><?php
-
-			if ( $id ) {
-				if ( ! is_wp_error($id) ) {
-					add_filter('attachment_fields_to_edit', 'media_post_single_attachment_fields_to_edit', 10, 2);
-					echo get_media_items( $id, $errors );
-				} else {
-					echo '<div id="media-upload-error">'.esc_html( $id->get_error_message() ) . '</div></div>';
-					exit;
-				}
-			}
-			?></div>
-
-			<p class="savebutton ml-submit">
-				<?php submit_button( __( 'Save all changes', 'edd' ), 'button', 'save', false ); ?>
+		$form_action_url = add_query_arg( array( 'edd_action' => 's3_upload' ), admin_url() );
+		if( ! empty( $_GET['s3_success'] ) && '1' == $_GET['s3_success'] ) {
+			echo '<div class="edd_errors"><p class="edd_success">' . __( 'Success! You may not add the uploaded file to the Download via the Amazon S3 Library tab', 'edd_s3' ) . '</p></div>';
+		}
+?>
+		<style>
+		.edd_errors { -webkit-border-radius: 2px; -moz-border-radius: 2px; border-radius: 2px; border: 1px solid #E6DB55; margin: 0 0 21px 0; background: #FFFFE0; color: #333; }
+		.edd_errors p { margin: 10 15px; }
+		</style>
+		<form enctype="multipart/form-data" method="post" action="<?php echo esc_attr( $form_action_url ); ?>" class="edd-s3-upload">
+			<p>
+				<input type="file" name="edd_s3_file"/>
+			</p>
+			<p>
+				<input type="submit" class="button-secondary" value="<?php esc_attr_e( 'Upload to S3', 'edd-s3' ); ?>"/>
 			</p>
 		</form>
 	<?php
-	}
-
-	public static function s3_library_tab( $type = 'file', $errors = null, $id = null ) {
-
-		media_upload_header();
-		wp_enqueue_style( 'media' );
-
-		$page = isset( $_GET['p'] ) ? $_GET['p'] : 1;
-		$per_page = 15;
-		$offset = $per_page * ($page-1);
-		$offset = $offset < 1 ? 15 : $offset;
-		$start = isset( $_GET['start'] ) ? rawurldecode( $_GET['start'] ) : '';
-
-		$files = self::get_s3_files( $start, $offset );
-
-		//echo '<pre>'; print_r( $files ); echo '</pre>';
-		?>
-		<script type="text/javascript">
-			//<![CDATA[
-			jQuery(function($){
-				$('.insert-s3').on('click', function() {
-					var file = $(this).prev().data('s3');
-					$(parent.window.edd_formfield).val(file);
-					parent.window.tb_remove();
-				});
-			});
-			//]]>
-		</script>
-		<div style="margin: 20px 1em 1em;" id="media-items">
-			<h3 class="media-title"><?php _e('Select a file from your Amazon S3 Bucket', 'edd'); ?></h3>
-			<?php
-			if( is_array( $files ) ) {
-				$i = 0;
-				$total_items = count( $files );
-
-				echo '<ul>';
-				foreach ( $files as $key => $file ) {
-
-					if( $i == 0)
-						$first_file = $key;
-
-					if( $i == 14 )
-						$last_file = $key;
-
-					if( strpos( $file['name'], '.' ) === false )
-						continue; // Don't show folders
-
-					echo '<li class="media-item" style="margin-bottom:0;">';
-						echo '<span style="display:block;float:left;height:36px;line-height:36px;margin-left:8px;" data-s3="' . $file['name'] . '">' . $file['name'] . '</span>';
-						echo '<a class="insert-s3 button-secondary" href="#" style="float:right;margin:8px 8px 0;">' . __('Use File', 'edd') . '</a>';
-					echo '</li>';
-
-					$i++;
-				}
-				echo '</ul>';
-			}
-
-			$base = admin_url( 'media-upload.php?post_id=' . absint( $_GET['post_id'] ) . '&tab=s3_library' );
-
-			echo '<div class="s3-pagination tablenav">';
-				echo '<div class="tablenav-pages alignright">';
-					if( isset( $_GET['p'] ) && $_GET['p'] > 1 )
-						echo '<a class="page-numbers prev" href="' . remove_query_arg('p', $base) . '">' . __('Start Over', 'edd') . '</a>';
-					if( $i >= 10)
-						echo '<a class="page-numbers next" href="' . add_query_arg(array('p' => $page + 1, 'start' => $last_file), $base) . '">' . __('More', 'edd') . '</a>';
-				echo '</div>';
-			echo '</div>';
-			?>
-		</div>
-	<?php
-	}
-
-	public static function s3_iframe() {
-
-		if ( ! empty( $_POST ) ) {
-			$return = media_upload_form_handler();
-			if ( is_string( $return ) )
-				return $return;
-		}
-
-		wp_iframe( array( 'EDD_Amazon_S3', 's3_upload_download_tab' ) );
 	}
 
 	public static function s3_library_iframe() {
@@ -315,75 +186,74 @@ class EDD_Amazon_S3 {
 		wp_iframe( array( 'EDD_Amazon_S3', 's3_library_tab' ) );
 	}
 
-	public static function add_settings( $settings ) {
+	public static function s3_library_tab( $type = 'file', $errors = null, $id = null ) {
 
-		$settings[] = array(
-					'id'   => 'amazon_s3_settings',
-					'name' => __( '<strong>Amazon S3 Settings</strong>', 'edd' ),
-					'desc' => '',
-					'type' => 'header'
-		);
+		media_upload_header();
+		wp_enqueue_style( 'media' );
 
-		$settings[] = array(
-					'id'   => 'edd_amazon_s3_id',
-					'name' => __( 'Amazon S3 Access Key ID', 'edd' ),
-					'desc' => __( 'After logging into your S3 account, click on "Security Credentials" in the sidebar.  Scroll down to "Access Credentials" and you will see your Access Key ID.  Copy and paste it here.', 'edd' ),
-					'type' => 'text',
-					'size' => 'regular'
-		);
+		$page = isset( $_GET['p'] ) ? $_GET['p'] : 1;
+		$per_page = 30;
+		$offset = $per_page * ($page-1);
+		$offset = $offset < 1 ? 30 : $offset;
+		$start = isset( $_GET['start'] ) ? rawurldecode( $_GET['start'] ) : '';
 
-		$settings[] = array(
-					'id'   => 'edd_amazon_s3_key',
-					'name' => __( 'Amazon S3 Secret Key', 'edd' ),
-					'desc' => __( 'In the same Access Credentials area, your "Secret Key" will be hidden.  You will need to click the "Show" link to see it.  Copy and paste it here.', 'edd' ),
-					'type' => 'text',
-					'size' => 'regular'
-		);
+		$files = self::get_s3_files( $start, $offset );
 
-		$settings[] = array(
-					'id'   => 'edd_amazon_s3_bucket',
-					'name' => __( 'Amazon S3 Bucket', 'edd' ),
-					'desc' => sprintf( __( 'To create new buckets or get a listing of your current buckets, go to your <a href="%s">S3 Console</a> (you must be logged in to access the console).  Your buckets will be listed on the left.  Enter the name of the bucket you would like to use here.', 'edd' ), esc_url( 'https://console.aws.amazon.com/s3/home' ) ),
-					'type' => 'text'
-		);
+?>
+		<script type="text/javascript">
+			//<![CDATA[
+			jQuery(function($){
+				$('.insert-s3').on('click', function() {
+					var file = $(this).prev().data('s3');
+					$(parent.window.edd_filename).val(file);
+					$(parent.window.edd_fileurl).val(file);
+					parent.window.tb_remove();
+				});
+			});
+			//]]>
+		</script>
+		<div style="margin: 20px 1em 1em; padding-right:20px;" id="media-items">
+			<h3 class="media-title"><?php _e('Select a file from your Amazon S3 Bucket', 'edd_s3'); ?></h3>
+			<?php
+			if( is_array( $files ) ) {
+				$i = 0;
+				$total_items = count( $files );
 
-		$settings[] = array(
-					'id'   => 'edd_amazon_s3_host',
-					'name' => __( 'Amazon S3 Host', 'edd' ),
-					'desc' => __( 'Set the host you wish to use. Leave default if you do not know what this is for', 'edd_s3' ),
-					'type' => 'text',
-					'std'  => 's3.amazonaws.com'
-		);
+				echo '<ul style="padding-right: 20px; max-height: 500px;overflow-y:scroll;">';
+				foreach ( $files as $key => $file ) {
 
-		$settings[] = array(
-					'id'   => 'edd_amazon_s3_default_expiry',
-					'name' => __( 'Link Expiry Time', 'edd' ),
-					'desc' => __( 'Amazon S3 links expire after a certain amount of time. This default number of minutes will be used when capturing file downloads, but can be overriden per file if needed.', 'edd' ),
-					'std' => '5',
-					'type' => 'text'
-		);
+					if( $i == 0)
+						$first_file = $key;
 
-		return $settings;
-	}
+					if( $i == 14 )
+						$last_file = $key;
 
-	public static function download_file_table_head() {
-		?><th class="expiry" style="width: 5%;"><?php _e( 'Expires', 'edd' ); ?></th><?php
-	}
+					if( strpos( $file['name'], '.' ) === false )
+						continue; // Don't show folders
 
-	public static function download_file_row_args($args, $file) {
-		$expires = isset( $file['expires'] ) ? $file['expires'] : '';
-		$args['expires'] = $expires;
-		return $args;
-	}
+					echo '<li class="media-item" style="margin-bottom:0;">';
+						echo '<span style="display:block;float:left;height:36px;line-height:36px;margin-left:8px;" data-s3="' . $file['name'] . '">' . $file['name'] . '</span>';
+						echo '<a class="insert-s3 button-secondary" href="#" style="float:right;margin:8px 8px 0;">' . __('Use File', 'edd_s3') . '</a>';
+					echo '</li>';
 
-	public static function download_file_table_row($post_id, $key, $args) {
-		extract( $args, EXTR_SKIP );
-		if (empty($expires)) {
-			$expires = self::$default_expiry;
-		}
-		?><td>
-			<input type="text" class="edd_repeatable_name_field" name="edd_download_files[<?php echo $key; ?>][expires]" id="edd_download_files[<?php echo $key; ?>][expires]" value="<?php echo $expires; ?>" maxlength="3" style="width:30px" />
-		</td><?php
+					$i++;
+				}
+				echo '</ul>';
+			}
+
+			$base = admin_url( 'media-upload.php?post_id=' . absint( $_GET['post_id'] ) . '&tab=s3_library' );
+
+			echo '<div class="s3-pagination tablenav">';
+				echo '<div class="tablenav-pages alignright">';
+					if( isset( $_GET['p'] ) && $_GET['p'] > 1 )
+						echo '<a class="page-numbers prev" href="' . remove_query_arg('p', $base) . '">' . __('Start Over', 'edd_s3') . '</a>';
+					if( $i >= 10)
+						echo '<a class="page-numbers next" href="' . add_query_arg(array('p' => $page + 1, 'start' => $last_file), $base) . '">' . __('More', 'edd_s3') . '</a>';
+				echo '</div>';
+			echo '</div>';
+			?>
+		</div>
+<?php
 	}
 
 	public static function get_s3_files( $marker = null, $max = null ) {
@@ -395,9 +265,7 @@ class EDD_Amazon_S3 {
 		return $contents;
 	}
 
-	public static function get_s3_url( $filename, $expires = 5) {
-
-		// Not used anymore but here for reference
+	public static function get_s3_url( $filename, $expires = 5 ) {
 
 		$s3     = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
 		$bucket = self::$bucket;
@@ -406,62 +274,32 @@ class EDD_Amazon_S3 {
 		return $url;
 	}
 
-	public static function url_intercept( $url, $post_id ) {
+	public static function upload_handler() {
 
-		//We only want to intercept the URL of attachments of downloads
-		if ( 'download' != get_post_field( 'post_type', get_post_field( 'post_parent', $post_id ) ) )
-			return $url;
+		if( ! is_admin() ) {
+			return;
+		}
 
-		//Give room for future development to have a turn-off switch, per product.  Perhaps someone uploads to S3, but then changes their mind ( or S3 goes down :) )
-		if ( apply_filters( 'edd_s3_url_intercept_override', false, $url, $post_id ) )
-			return $url;
+		$s3_upload_cap = apply_filters( 'edd_s3_upload_cap', 'edit_products' );
 
-		//We only want to intercept the URL when the attachment was actually uploaded to S3.
-		if ( false == ( $s3_url = get_post_meta( $post_id, 's3_url', true ) ) )
-			return $url;
+		if( ! current_user_can( $s3_upload_cap ) ) {
+			wp_die( __( 'You do not have permission to upload files to S3', 'edd_s3' ) );
+		}
 
-		return $s3_url;
-	}
-
-	public static function upload_handler( $file_array, $context ) {
-
-		if ( 'upload' != $context )
-			return $file_array;
-
-		if( ( isset( $_REQUEST['tab'] ) && $_REQUEST['tab'] != 's3' ) || ! isset( $_REQUEST['tab'] ) )
-			return $file_array;
-
-		$file = $file_array['file'];
-		$url  = $file_array['url'];
-		$type = $file_array['type'];
+		if( empty( $_FILES['edd_s3_file'] ) || empty( $_FILES['edd_s3_file']['name'] ) ) {
+			wp_die( __( 'Please select a file to upload', 'edd_s3' ), __( 'Error', 'edd_s3' ), array( 'back_link' => true ) );
+		}
 
 		$s3       = new S3( self::$access_id, self::$secret_key, false, self::get_host() );
 		$bucket   = self::$bucket;
-		$resource = $s3->inputFile( $file );
-		$resource['type'] = $type;
-		$push_file = $s3->putObject( $resource, $bucket, basename( $url ) );
-
-		return $file_array;
-	}
-
-	public static function add_post_meta( $att_id ) {
-
-		if ( 's3' != $_REQUEST['tab'] || ! isset( $_REQUEST['tab'] ) )
-			return;
-
-		//Get URL
-		$on_site_url = wp_get_attachment_url( $att_id );
-
-		//$s3_url = self::get_s3_url( basename( $on_site_url ) );
-		$s3_url = basename( $on_site_url );
-
-		update_post_meta( $att_id, 's3_url', $s3_url );
-
-		return $att_id;
-	}
-
-	public static function default_tab( $default ) {
-		return 's3';
+		$resource = $s3->inputFile( $_FILES['edd_s3_file']['tmp_name'] );
+		$resource['type'] = $_FILES['edd_s3_file']['type'];
+		$push_file = $s3->putObject( $resource, $bucket, $_FILES['edd_s3_file']['name'] );
+		if( $push_file ) {
+			wp_safe_redirect( add_query_arg( 's3_success', '1', $_SERVER['HTTP_REFERER'] ) ); exit;
+		} else {
+			wp_die( __( 'Something went wrong during the upload process', 'edd_s3' ), __( 'Error', 'edd_s3' ), array( 'back_link' => true ) );
+		}
 	}
 
 	public static function requested_file_name( $file_name ) {
@@ -485,7 +323,8 @@ class EDD_Amazon_S3 {
 			jQuery(function($){
 				$('body').on('click', '.edd_upload_file_button', function(e) {
 
-					window.edd_formfield = $(this).parent().prev();
+					window.edd_fileurl = $(this).parent().prev().find('input');
+					window.edd_filename = $(this).parent().parent().parent().prev().find('input');
 
 				});
 			});
@@ -501,8 +340,7 @@ class EDD_Amazon_S3 {
 		// Check whether thsi is an Amazon S3 file or not
         if( ( '/' !== $file_name[0] && strpos( $file_data['file'], 'http://' ) === false && strpos( $file_data['file'], 'https://' ) === false && strpos( $file_data['file'], 'ftp://' ) === false )|| false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
 
-			$expires = intval( isset( $file_data['expires'] ) ? $file_data['expires'] : self::$default_expiry );
-			if ($expires == 0) $expires = self::$default_expiry;
+			$expires = self::$default_expiry;
 
 	        if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
 	            //we are dealing with a URL prior to Amazon S3 extension 1.4
@@ -513,9 +351,16 @@ class EDD_Amazon_S3 {
 	                return $file_name;
 	            }
 	        }
-			return self::get_s3_url($file_name , $expires );
+
+	        add_filter( 'edd_file_download_method', array( 'EDD_Amazon_S3', 'set_download_method' ) );
+
+			return self::get_s3_url( $file_name , $expires );
 	    }
 	    return $file;
+	}
+
+	public static function set_download_method( $method ) {
+		return 'redirect';
 	}
 
     public static function cleanup_filename($old_file_name) {
@@ -578,8 +423,8 @@ class EDD_Amazon_S3 {
 
 				//we need to show an admin message
                 $message = '<div class="error"><p>';
-                $message .= '<strong>' . __('Easy Digital Downloads - Amazon S3 Extension Notice :', 'edd') . '</strong><br />';
-                $message .= sprintf( __('%s download(s) have invalid Amazon S3 URLs and need to be updated as soon as possible!', 'edd'), count($files_that_need_updating) );
+                $message .= '<strong>' . __('Easy Digital Downloads - Amazon S3 Extension Notice :', 'edd_s3') . '</strong><br />';
+                $message .= sprintf( __('%s download(s) have invalid Amazon S3 URLs and need to be updated as soon as possible!', 'edd_s3'), count($files_that_need_updating) );
 				foreach ($files_that_need_updating as $download) {
                     $message .= '<br /><a href="post.php?post='.$download['ID'].'&action=edit">' . $download['Title'] . '</a> : ';
 					$files = array();
@@ -601,37 +446,60 @@ class EDD_Amazon_S3 {
             echo $option;
         }
 	}
+
+	public static function add_settings( $settings ) {
+
+		$settings[] = array(
+					'id'   => 'amazon_s3_settings',
+					'name' => __( '<strong>Amazon S3 Settings</strong>', 'edd_s3' ),
+					'desc' => '',
+					'type' => 'header'
+		);
+
+		$settings[] = array(
+					'id'   => 'edd_amazon_s3_id',
+					'name' => __( 'Amazon S3 Access Key ID', 'edd_s3' ),
+					'desc' => __( 'After logging into your S3 account, click on "Security Credentials" in the sidebar.  Scroll down to "Access Credentials" and you will see your Access Key ID.  Copy and paste it here.', 'edd_s3' ),
+					'type' => 'text',
+					'size' => 'regular'
+		);
+
+		$settings[] = array(
+					'id'   => 'edd_amazon_s3_key',
+					'name' => __( 'Amazon S3 Secret Key', 'edd_s3' ),
+					'desc' => __( 'In the same Access Credentials area, your "Secret Key" will be hidden.  You will need to click the "Show" link to see it.  Copy and paste it here.', 'edd_s3' ),
+					'type' => 'text',
+					'size' => 'regular'
+		);
+
+		$settings[] = array(
+					'id'   => 'edd_amazon_s3_bucket',
+					'name' => __( 'Amazon S3 Bucket', 'edd_s3' ),
+					'desc' => sprintf( __( 'To create new buckets or get a listing of your current buckets, go to your <a href="%s">S3 Console</a> (you must be logged in to access the console).  Your buckets will be listed on the left.  Enter the name of the bucket you would like to use here.', 'edd_s3' ), esc_url( 'https://console.aws.amazon.com/s3/home' ) ),
+					'type' => 'text'
+		);
+
+		$settings[] = array(
+					'id'   => 'edd_amazon_s3_host',
+					'name' => __( 'Amazon S3 Host', 'edd_s3' ),
+					'desc' => __( 'Set the host you wish to use. Leave default if you do not know what this is for', 'edd_s3' ),
+					'type' => 'text',
+					'std'  => 's3.amazonaws.com'
+		);
+
+		$settings[] = array(
+					'id'   => 'edd_amazon_s3_default_expiry',
+					'name' => __( 'Link Expiry Time', 'edd_s3' ),
+					'desc' => __( 'Amazon S3 links expire after a certain amount of time. This default number of minutes will be used when capturing file downloads, but can be overriden per file if needed.', 'edd_s3' ),
+					'std' => '5',
+					'type' => 'text'
+		);
+
+		return $settings;
+	}
 }
 
 function edd_s3_load() {
 	$GLOBALS['edd_s3'] = new EDD_Amazon_S3();
 }
 add_action( 'plugins_loaded', 'edd_s3_load' );
-
-
-
-/**
- * Registers the new license field type
- *
- * @access      private
- * @since       1.4.2
- * @return      void
-*/
-
-if( ! function_exists( 'edd_license_key_callback' ) ) {
-	function edd_license_key_callback( $args ) {
-		global $edd_options;
-
-		if( isset( $edd_options[ $args['id'] ] ) ) { $value = $edd_options[ $args['id'] ]; } else { $value = isset( $args['std'] ) ? $args['std'] : ''; }
-		$size = isset( $args['size'] ) && !is_null($args['size']) ? $args['size'] : 'regular';
-		$html = '<input type="text" class="' . $args['size'] . '-text" id="edd_settings_' . $args['section'] . '[' . $args['id'] . ']" name="edd_settings_' . $args['section'] . '[' . $args['id'] . ']" value="' . esc_attr( $value ) . '"/>';
-
-		if( 'valid' == get_option( $args['options']['is_valid_license_option'] ) ) {
-			$html .= wp_nonce_field( $args['id'] . '_nonce', $args['id'] . '_nonce', false );
-			$html .= '<input type="submit" class="button-secondary" name="' . $args['id'] . '_deactivate" value="' . __( 'Deactivate License',  'edd-recurring' ) . '"/>';
-		}
-		$html .= '<label for="edd_settings_' . $args['section'] . '[' . $args['id'] . ']"> '  . $args['desc'] . '</label>';
-
-		echo $html;
-	}
-}
