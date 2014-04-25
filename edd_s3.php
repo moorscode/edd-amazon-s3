@@ -119,7 +119,7 @@ class EDD_Amazon_S3 {
 
 		//Adds Media Tab
 		add_filter( 'media_upload_tabs'       , array( $this, 's3_tabs' ) );
-		add_action( 'media_upload_s3'         , array( $this, 's3_upload_download_tab' ) );
+		add_action( 'media_upload_s3'         , array( $this, 's3_upload_iframe' ) );
 		add_action( 'media_upload_s3_library' , array( $this, 's3_library_iframe' ) );
 
 		//Adds settings to Misc Tab
@@ -153,26 +153,53 @@ class EDD_Amazon_S3 {
 		return $tabs;
 	}
 
+	public static function s3_upload_iframe() {
+
+		if ( ! empty( $_POST ) ) {
+			$return = media_upload_form_handler();
+			if ( is_string( $return ) )
+				return $return;
+		}
+
+		wp_iframe( array( 'EDD_Amazon_S3', 's3_upload_download_tab' ) );
+	}
+
 	public static function s3_upload_download_tab( $type = 'file', $errors = null, $id = null ) {
 
+		wp_enqueue_style( 'media' );
+
 		$form_action_url = add_query_arg( array( 'edd_action' => 's3_upload' ), admin_url() );
-		if( ! empty( $_GET['s3_success'] ) && '1' == $_GET['s3_success'] ) {
-			echo '<div class="edd_errors"><p class="edd_success">' . __( 'Success! You may not add the uploaded file to the Download via the Amazon S3 Library tab', 'edd_s3' ) . '</p></div>';
-		}
 ?>
 		<style>
 		.edd_errors { -webkit-border-radius: 2px; -moz-border-radius: 2px; border-radius: 2px; border: 1px solid #E6DB55; margin: 0 0 21px 0; background: #FFFFE0; color: #333; }
-		.edd_errors p { margin: 10 15px; }
+		.edd_errors p { margin: 10 15px; padding: 0 10px; }
 		</style>
-		<form enctype="multipart/form-data" method="post" action="<?php echo esc_attr( $form_action_url ); ?>" class="edd-s3-upload">
-			<p>
-				<input type="file" name="edd_s3_file"/>
-			</p>
-			<p>
-				<input type="submit" class="button-secondary" value="<?php esc_attr_e( 'Upload to S3', 'edd-s3' ); ?>"/>
-			</p>
-		</form>
-	<?php
+		<script>
+		jQuery(document).ready(function($) {
+			$('.edd-s3-insert').click(function() {
+				var file = "<?php echo EDD()->session->get( 's3_file_name' ); ?>";
+				$(parent.window.edd_filename).val(file);
+				$(parent.window.edd_fileurl).val(file);
+				parent.window.tb_remove();
+			});
+		});
+		</script>
+		<div class="wrap">
+			<form enctype="multipart/form-data" method="post" action="<?php echo esc_attr( $form_action_url ); ?>" class="edd-s3-upload">
+				<p>
+					<input type="file" name="edd_s3_file"/>
+				</p>
+				<p>
+					<input type="submit" class="button-secondary" value="<?php esc_attr_e( 'Upload to S3', 'edd-s3' ); ?>"/>
+				</p>
+<?php 
+				if( ! empty( $_GET['s3_success'] ) && '1' == $_GET['s3_success'] ) {
+					echo '<div class="edd_errors"><p class="edd_success">' . sprintf( __( 'Success! <a href="#" class="edd-s3-insert">Insert uploaded file into %s</a>.', 'edd_s3' ), edd_get_label_singular() ) . '</p></div>';
+				}
+?>
+			</form>
+		</div>
+<?php
 	}
 
 	public static function s3_library_iframe() {
@@ -289,16 +316,35 @@ class EDD_Amazon_S3 {
 		if( empty( $_FILES['edd_s3_file'] ) || empty( $_FILES['edd_s3_file']['name'] ) ) {
 			wp_die( __( 'Please select a file to upload', 'edd_s3' ), __( 'Error', 'edd_s3' ), array( 'back_link' => true ) );
 		}
+		
+		$file = array(
+			'name' => $_FILES['edd_s3_file']['name'],
+			'file' => $_FILES['edd_s3_file']['tmp_name'],
+			'type' => $_FILES['edd_s3_file']['type']
+		);
 
-		$s3       = new S3( self::$access_id, self::$secret_key, false, self::get_host() );
-		$bucket   = self::$bucket;
-		$resource = $s3->inputFile( $_FILES['edd_s3_file']['tmp_name'] );
-		$resource['type'] = $_FILES['edd_s3_file']['type'];
-		$push_file = $s3->putObject( $resource, $bucket, $_FILES['edd_s3_file']['name'] );
-		if( $push_file ) {
+		if( self::upload_file( $file ) ) {
+			EDD()->session->set( 's3_file_name', $file['name'] );
 			wp_safe_redirect( add_query_arg( 's3_success', '1', $_SERVER['HTTP_REFERER'] ) ); exit;
 		} else {
 			wp_die( __( 'Something went wrong during the upload process', 'edd_s3' ), __( 'Error', 'edd_s3' ), array( 'back_link' => true ) );
+		}
+	}
+
+	public static function upload_file( $file = array() ) {
+
+		$s3                = new S3( self::$access_id, self::$secret_key, false, self::get_host() );
+		$bucket            = self::$bucket;
+		
+		$resource          = $s3->inputFile( $file['file'] );
+		$resource['type']  = $file['type'];
+
+		$push_file         = $s3->putObject( $resource, $bucket, $file['name'] );
+		
+		if( $push_file ) {
+			return true;
+		} else {
+			return false;
 		}
 	}
 
