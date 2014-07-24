@@ -72,7 +72,7 @@ class EDD_Amazon_S3 {
 	private function constants() {
 
 		// plugin version
-		define( 'EDD_AS3_VERSION', '2.0' );
+		define( 'EDD_AS3_VERSION', '1.9' );
 
 		// Set the core file path
 		define( 'EDD_AS3_FILE_PATH', dirname( __FILE__ ) );
@@ -136,12 +136,6 @@ class EDD_Amazon_S3 {
 
 		// add some javascript to the admin
 		add_action( 'admin_head', array( $this, 'admin_js' ) );
-
-		// show a notice to users who have updated from a previous version of this plugin
-		add_action( 'admin_notices', array( $this, 'setup_admin_notice') );
-
-        //intercept the publishing of downloads and clear the admin notice
-        add_action( 'publish_download', array( $this, 'clear_admin_notice') );
 
 	}
 
@@ -419,79 +413,6 @@ class EDD_Amazon_S3 {
 
         return $old_file_name;
     }
-
-    public static function clear_admin_notice() {
-        $option = get_option('edd_s3_upgrade_to_1_4', false);
-        if ( $option !== true ) {
-            delete_option('edd_s3_upgrade_to_1_4' );
-        }
-    }
-
-	public static function setup_admin_notice() {
-		//first check if we need to show the notice at all
-        $option = get_option( 'edd_s3_upgrade_to_1_4', false );
-
-		if ( $option === false ) {
-
-			//check to see if we have any downloads with files that are stored using Amazon S3
-
-			//get all downloads
-			$args = array(
-				'post_type' => 'download',
-				'post_status' => 'publish',
-				'numberposts' => -1
-			);
-			$downloads = get_posts($args);
-
-			$files_that_need_updating = array();
-
-			foreach ( $downloads as $download ) {
-				$files = edd_get_download_files( $download->ID );
-				if( $files && is_array( $files ) ) {
-					foreach ( $files as $file ) {
-						$url = $file['file'];
-	                    if( false !== ( strpos( $url, 'AWSAccessKeyId' ) ) ) {
-							if ( ! array_key_exists( $download->ID, $files_that_need_updating ) ) {
-								$files_that_need_updating[$download->ID] = array(
-								    'ID' => $download->ID,
-								    'Title' => $download->post_title,
-								    'Files' => array()
-								);
-							}
-							$files_that_need_updating[$download->ID]['Files'][] = $file;
-						}
-					}
-				}
-			}
-
-			if ( count( $files_that_need_updating ) > 0 ) {
-
-
-				//we need to show an admin message
-                $message = '<div class="error"><p>';
-                $message .= '<strong>' . __('Easy Digital Downloads - Amazon S3 Extension Notice :', 'edd_s3') . '</strong><br />';
-                $message .= sprintf( __('%s download(s) have invalid Amazon S3 URLs and need to be updated as soon as possible!', 'edd_s3'), count($files_that_need_updating) );
-				foreach ($files_that_need_updating as $download) {
-                    $message .= '<br /><a href="post.php?post='.$download['ID'].'&action=edit">' . $download['Title'] . '</a> : ';
-					$files = array();
-					foreach ($download['Files'] as $file) {
-						$files[] = $file['name'];
-					}
-
-                    $message .= implode(',', $files);
-				}
-                $message .= '</p></div>';
-                add_option('edd_s3_upgrade_to_1_4', $message);
-                echo $message;
-
-			}
-		} else if ($option === true) {
-            //we dont need to update any URLs so do not perform this check again
-        } else {
-            //we have previously generated the message
-            echo $option;
-        }
-	}
 
 	public static function add_settings( $settings ) {
 
