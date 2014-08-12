@@ -394,7 +394,7 @@ class EDD_Amazon_S3 {
 
 	        add_filter( 'edd_file_download_method', array( 'EDD_Amazon_S3', 'set_download_method' ) );
 
-			return self::get_s3_url( $file_name , $expires );
+			return set_url_scheme( self::get_s3_url( $file_name , $expires ), 'http' );
 	    }
 	    return $file;
 	}
