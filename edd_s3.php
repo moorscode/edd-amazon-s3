@@ -141,8 +141,12 @@ class EDD_Amazon_S3 {
 
 	public static function s3_tabs( $tabs ) {
 
-		$tabs['s3']         = __( 'Upload to Amazon S3', 'edd_s3' );
-		$tabs['s3_library'] = __( 'Amazon S3 Library', 'edd_s3' );
+		if ( ! wp_script_is( 'fes_form', 'enqueued' ) ) {
+
+			$tabs['s3']         = __( 'Upload to Amazon S3', 'edd_s3' );
+			$tabs['s3_library'] = __( 'Amazon S3 Library', 'edd_s3' );
+
+		}
 
 		return $tabs;
 	}
