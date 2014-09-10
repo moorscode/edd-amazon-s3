@@ -229,7 +229,7 @@ class EDD_Amazon_S3 {
 			//<![CDATA[
 			jQuery(function($){
 				$('.insert-s3').on('click', function() {
-					var file = $(this).prev().data('s3');
+					var file = $(this).next().data('s3');
 					$(parent.window.edd_filename).val(file);
 					$(parent.window.edd_fileurl).val(file);
 					parent.window.tb_remove();
@@ -256,9 +256,9 @@ class EDD_Amazon_S3 {
 					if( strpos( $file['name'], '.' ) === false )
 						continue; // Don't show folders
 
-					echo '<li class="media-item" style="margin-bottom:0;">';
+					echo '<li style="margin-bottom:0;display:block;height:36px;line-height:36px;">';
+						echo '<a class="insert-s3 button-secondary" href="#" style="float:left;margin:8px 8px 0;">' . __('Use File', 'edd_s3') . '</a>';
 						echo '<span style="display:block;float:left;height:36px;line-height:36px;margin-left:8px;" data-s3="' . $file['name'] . '">' . $file['name'] . '</span>';
-						echo '<a class="insert-s3 button-secondary" href="#" style="float:right;margin:8px 8px 0;">' . __('Use File', 'edd_s3') . '</a>';
 					echo '</li>';
 
 					$i++;
