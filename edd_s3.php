@@ -292,8 +292,9 @@ class EDD_Amazon_S3 {
 						if( $i == 14 )
 							$last_file = $key;
 
-						if( strpos( $file['name'], '.' ) === false )
+						if( strpos( $file['name'], '/' ) === false ) {
 							continue; // Don't show folders
+						}
 
 						echo '<li style="margin-bottom:0;display:block;height:36px;line-height:36px;">';
 							echo '<a class="insert-s3 button-secondary" href="#" style="float:left;margin:8px 8px 0;">' . __('Use File', 'edd_s3') . '</a>';
@@ -341,7 +342,7 @@ class EDD_Amazon_S3 {
 
 			$parts    = explode( '/', $filename );
 			$bucket   = $parts[0];
-			$filename = $parts[1];
+			$filename = str_replace( $parts[0] . '/', '', $filename );
 
 		} else {
 
