@@ -185,6 +185,14 @@ class EDD_Amazon_S3 {
 		<div class="wrap">
 			<form enctype="multipart/form-data" method="post" action="<?php echo esc_attr( $form_action_url ); ?>" class="edd-s3-upload">
 				<p>
+					<select name="edd_s3_bucket" id="edd_s3_bucket">
+					<?php foreach ( self::get_s3_buckets() as $key => $bucket ) : ?>
+						<option value="<?php echo $bucket; ?>"><?php echo $bucket; ?></option>
+					<?php endforeach; ?>
+					</select>
+					<label for="edd_s3_bucket"><?php _e( 'Select a bucket to upload the file to', 'edd_s3' ); ?></label>
+				</p>
+				<p>
 					<input type="file" name="edd_s3_file"/>
 				</p>
 				<p>
@@ -350,9 +358,10 @@ class EDD_Amazon_S3 {
 		}
 		
 		$file = array(
-			'name' => $_FILES['edd_s3_file']['name'],
-			'file' => $_FILES['edd_s3_file']['tmp_name'],
-			'type' => $_FILES['edd_s3_file']['type']
+			'bucket' => $_POST['edd_s3_bucket'],
+			'name'   => $_FILES['edd_s3_file']['name'],
+			'file'   => $_FILES['edd_s3_file']['tmp_name'],
+			'type'   => $_FILES['edd_s3_file']['type']
 		);
 
 		if( self::upload_file( $file ) ) {
@@ -366,7 +375,7 @@ class EDD_Amazon_S3 {
 	public static function upload_file( $file = array() ) {
 
 		$s3                = new S3( self::$access_id, self::$secret_key, false, self::get_host() );
-		$bucket            = self::$bucket;
+		$bucket            = empty( $file['bucket'] ) ? self::$bucket : $file['bucket'];
 		
 		$resource          = $s3->inputFile( $file['file'] );
 		$resource['type']  = $file['type'];
