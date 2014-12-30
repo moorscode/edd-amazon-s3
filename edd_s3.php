@@ -292,7 +292,7 @@ class EDD_Amazon_S3 {
 						if( $i == 14 )
 							$last_file = $key;
 
-						if( strpos( $file['name'], '/' ) === false ) {
+						if( $file['name'][ strlen( $file['name'] ) - 1 ] === '/' ) {
 							continue; // Don't show folders
 						}
 
