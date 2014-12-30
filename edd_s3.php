@@ -175,10 +175,11 @@ class EDD_Amazon_S3 {
 		<script>
 		jQuery(document).ready(function($) {
 			$('.edd-s3-insert').click(function() {
-				var file = "<?php echo EDD()->session->get( 's3_file_name' ); ?>";
+				var file   = "<?php echo EDD()->session->get( 's3_file_name' ); ?>";
+				var bucket = "<?php echo EDD()->session->get( 's3_file_bucket' ); ?>";
 				$(parent.window.edd_filename).val(file);
-				$(parent.window.edd_fileurl).val(file);
-				parent.window.tb_remove();
+				$(parent.window.edd_fileurl).val(bucket + '/' + file);
+ 				parent.window.tb_remove();
 			});
 		});
 		</script>
@@ -250,7 +251,7 @@ class EDD_Amazon_S3 {
 				$('.insert-s3').on('click', function() {
 					var file = $(this).next().data('s3');
 					$(parent.window.edd_filename).val(file);
-					$(parent.window.edd_fileurl).val(file);
+					$(parent.window.edd_fileurl).val( "<?php echo self::$bucket; ?>/" + file);
 					parent.window.tb_remove();
 				});
 			});
@@ -334,9 +335,21 @@ class EDD_Amazon_S3 {
 
 	public static function get_s3_url( $filename, $expires = 5 ) {
 
-		$s3     = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
-		$bucket = self::$bucket;
-		$url 	= $s3->getAuthenticatedURL( $bucket, $filename, ( 60 * $expires ), false, is_ssl() );
+		$s3 = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
+
+		if( false !== strpos( $filename, '/' ) ) {
+
+			$parts    = explode( '/', $filename );
+			$bucket   = $parts[0];
+			$filename = $parts[1];
+
+		} else {
+
+			$bucket = self::$bucket;
+
+		}
+
+		$url = $s3->getAuthenticatedURL( $bucket, $filename, ( 60 * $expires ), false, is_ssl() );
 
 		return $url;
 	}
@@ -366,6 +379,7 @@ class EDD_Amazon_S3 {
 
 		if( self::upload_file( $file ) ) {
 			EDD()->session->set( 's3_file_name', $file['name'] );
+			EDD()->session->set( 's3_file_bucket', $file['bucket'] );
 			wp_safe_redirect( add_query_arg( 's3_success', '1', $_SERVER['HTTP_REFERER'] ) ); exit;
 		} else {
 			wp_die( __( 'Something went wrong during the upload process', 'edd_s3' ), __( 'Error', 'edd_s3' ), array( 'back_link' => true ) );
