@@ -216,13 +216,24 @@ class EDD_Amazon_S3 {
 		media_upload_header();
 		wp_enqueue_style( 'media' );
 
-		$page = isset( $_GET['p'] ) ? $_GET['p'] : 1;
+		$page     = isset( $_GET['p'] ) ? $_GET['p'] : 1;
 		$per_page = 30;
-		$offset = $per_page * ($page-1);
-		$offset = $offset < 1 ? 30 : $offset;
-		$start = isset( $_GET['start'] ) ? rawurldecode( $_GET['start'] ) : '';
+		$offset   = $per_page * ( $page - 1 );
+		$offset   = $offset < 1 ? 30 : $offset;
+		$start    = isset( $_GET['start'] )  ? rawurldecode( $_GET['start'] )  : '';
+		$bucket   = isset( $_GET['bucket'] ) ? rawurldecode( $_GET['bucket'] ) : false;
+		
+		if( ! $bucket ) {
 
-		$files = self::get_s3_files( $start, $offset );
+			$buckets = self::get_s3_buckets();
+
+		} else {
+
+			self::$bucket = $bucket;
+			$files = self::get_s3_files( $start, $offset );
+
+		}
+
 
 ?>
 		<script type="text/javascript">
@@ -238,56 +249,79 @@ class EDD_Amazon_S3 {
 			//]]>
 		</script>
 		<div style="margin: 20px 1em 1em; padding-right:20px;" id="media-items">
-			<h3 class="media-title"><?php _e('Select a file from your Amazon S3 Bucket', 'edd_s3'); ?></h3>
+			
 			<?php
-			if( is_array( $files ) ) {
-				$i = 0;
-				$total_items = count( $files );
+			if( ! $bucket ) { ?>
+				<h3 class="media-title"><?php _e('Select a Bucket', 'edd_s3'); ?></h3>
+				<?php
 
-				echo '<ul style="padding-right: 20px; max-height: 500px;overflow-y:scroll;">';
-				foreach ( $files as $key => $file ) {
+				if( is_array( $buckets ) ) {
+				
+					echo '<ul style="padding-right: 20px; max-height: 500px;overflow-y:scroll;">';
+					foreach ( $buckets as $key => $bucket ) {
 
-					if( $i == 0)
-						$first_file = $key;
+						echo '<li style="margin-bottom:0;display:block;height:36px;line-height:36px;">';
+							echo '<a href="' . add_query_arg( 'bucket', $bucket ) . '">' . $bucket . '</a>';
+						echo '</li>';
 
-					if( $i == 14 )
-						$last_file = $key;
-
-					if( strpos( $file['name'], '.' ) === false )
-						continue; // Don't show folders
-
-					echo '<li style="margin-bottom:0;display:block;height:36px;line-height:36px;">';
-						echo '<a class="insert-s3 button-secondary" href="#" style="float:left;margin:8px 8px 0;">' . __('Use File', 'edd_s3') . '</a>';
-						echo '<span style="display:block;float:left;height:36px;line-height:36px;margin-left:8px;" data-s3="' . $file['name'] . '">' . $file['name'] . '</span>';
-					echo '</li>';
-
-					$i++;
+					}
+					echo '</ul>';
 				}
-				echo '</ul>';
-			}
 
-			$base = admin_url( 'media-upload.php?post_id=' . absint( $_GET['post_id'] ) . '&tab=s3_library' );
+			} else {
 
-			echo '<div class="s3-pagination tablenav">';
-				echo '<div class="tablenav-pages alignright">';
-					if( isset( $_GET['p'] ) && $_GET['p'] > 1 )
-						echo '<a class="page-numbers prev" href="' . remove_query_arg('p', $base) . '">' . __('Start Over', 'edd_s3') . '</a>';
-					if( $i >= 10)
-						echo '<a class="page-numbers next" href="' . add_query_arg(array('p' => $page + 1, 'start' => $last_file), $base) . '">' . __('More', 'edd_s3') . '</a>';
+				if( is_array( $files ) ) {
+					$i = 0;
+					$total_items = count( $files );
+
+					echo '<ul style="padding-right: 20px; max-height: 500px;overflow-y:scroll;">';
+					foreach ( $files as $key => $file ) {
+
+						if( $i == 0)
+							$first_file = $key;
+
+						if( $i == 14 )
+							$last_file = $key;
+
+						if( strpos( $file['name'], '.' ) === false )
+							continue; // Don't show folders
+
+						echo '<li style="margin-bottom:0;display:block;height:36px;line-height:36px;">';
+							echo '<a class="insert-s3 button-secondary" href="#" style="float:left;margin:8px 8px 0;">' . __('Use File', 'edd_s3') . '</a>';
+							echo '<span style="display:block;float:left;height:36px;line-height:36px;margin-left:8px;" data-s3="' . $file['name'] . '">' . $file['name'] . '</span>';
+						echo '</li>';
+
+						$i++;
+					}
+					echo '</ul>';
+				}
+
+				$base = admin_url( 'media-upload.php?post_id=' . absint( $_GET['post_id'] ) . '&tab=s3_library' );
+
+				echo '<div class="s3-pagination tablenav">';
+					echo '<div class="tablenav-pages alignright">';
+						if( isset( $_GET['p'] ) && $_GET['p'] > 1 )
+							echo '<a class="page-numbers prev" href="' . remove_query_arg('p', $base) . '">' . __('Start Over', 'edd_s3') . '</a>';
+						if( $i >= 10)
+							echo '<a class="page-numbers next" href="' . add_query_arg(array('p' => $page + 1, 'start' => $last_file), $base) . '">' . __('More', 'edd_s3') . '</a>';
+					echo '</div>';
 				echo '</div>';
-			echo '</div>';
+			}
 			?>
 		</div>
 <?php
 	}
 
+	public static function get_s3_buckets( $marker = null, $max = null ) {
+
+		$s3 = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
+		return $s3->listBuckets();
+	}
+
 	public static function get_s3_files( $marker = null, $max = null ) {
 
-		$s3       = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
-		$bucket   = self::$bucket;
-		$contents = $s3->getBucket( $bucket, null, $marker, $max );
-
-		return $contents;
+		$s3 = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
+		return $s3->getBucket( self::$bucket, null, $marker, $max );
 	}
 
 	public static function get_s3_url( $filename, $expires = 5 ) {
