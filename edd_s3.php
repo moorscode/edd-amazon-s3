@@ -242,8 +242,6 @@ class EDD_Amazon_S3 {
 			$files = self::get_s3_files( $start, $offset );
 
 		}
-
-
 ?>
 		<script type="text/javascript">
 			//<![CDATA[
@@ -526,7 +524,7 @@ class EDD_Amazon_S3 {
 		$settings[] = array(
 					'id'   => 'edd_amazon_s3_bucket',
 					'name' => __( 'Amazon S3 Bucket', 'edd_s3' ),
-					'desc' => sprintf( __( 'To create new buckets or get a listing of your current buckets, go to your <a href="%s">S3 Console</a> (you must be logged in to access the console).  Your buckets will be listed on the left.  Enter the name of the bucket you would like to use here.', 'edd_s3' ), esc_url( 'https://console.aws.amazon.com/s3/home' ) ),
+					'desc' => sprintf( __( 'To create new buckets or get a listing of your current buckets, go to your <a href="%s">S3 Console</a> (you must be logged in to access the console).  Your buckets will be listed on the left.  Enter the name of the default bucket you would like to use here.', 'edd_s3' ), esc_url( 'https://console.aws.amazon.com/s3/home' ) ),
 					'type' => 'text'
 		);
 
