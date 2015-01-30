@@ -137,6 +137,8 @@ class EDD_Amazon_S3 {
 		// add some javascript to the admin
 		add_action( 'admin_head', array( $this, 'admin_js' ) );
 
+		add_filter( 'fes_pre_files_save', array( $this, 'send_fes_files_to_s3' ), 10, 2 );
+
 	}
 
 	public static function s3_tabs( $tabs ) {
@@ -545,6 +547,52 @@ class EDD_Amazon_S3 {
 		);
 
 		return $settings;
+	}
+
+	/**
+	 * Uploads files to Amazon S3 during FES form submissions
+	 *
+	 * Only runs if Frontend Submissions is active
+	 *
+	 * @since 2.1
+	 *
+	 * @access public
+	 * @return array
+	 */
+	public function send_fes_files_to_s3( $files = array(), $post_id = 0 ) {
+
+		if( ! function_exists( 'fes_get_attachment_id_from_url' ) ) {
+			return $files;
+		}
+
+		if( ! empty( $files ) && is_array( $files ) ) {
+
+			foreach( $files as $key => $file ) {
+
+				$attachment_id = fes_get_attachment_id_from_url( $file['file'], get_current_user_id() );
+				if( ! $attachment_id ) {
+					continue;
+				}
+
+				$args = array(
+					'file' => get_attached_file( $attachment_id, false ),
+					'name' => $file['name'],
+					'type' => get_post_mime_type( $attachment_id )
+				);
+
+				self::upload_file( $args );
+
+				$files[ $key ]['file'] = edd_get_option( 'edd_amazon_s3_bucket' ) . '/' . basename( $file['file'] );
+
+				wp_delete_attachment( $attachment_id, true );
+
+
+			}
+
+		}
+
+		return $files;
+
 	}
 }
 
