@@ -279,9 +279,13 @@ class EDD_Amazon_S3 {
 
 			} else {
 
+				$back = admin_url( 'media-upload.php?post_id=' . absint( $_GET['post_id'] ) );
+
 				if( is_array( $files ) ) {
 					$i = 0;
 					$total_items = count( $files );
+
+					echo '<button class="button-secondary" onclick="history.back();">' . __( 'Go Back', 'edd_s3' ) . '</button>';
 
 					echo '<ul style="padding-right: 20px; max-height: 500px;overflow-y:scroll;">';
 					foreach ( $files as $key => $file ) {
