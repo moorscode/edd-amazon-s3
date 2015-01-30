@@ -249,7 +249,7 @@ class EDD_Amazon_S3 {
 			//<![CDATA[
 			jQuery(function($){
 				$('.insert-s3').on('click', function() {
-					var file = $(this).next().data('s3');
+					var file = $(this).data('s3');
 					$(parent.window.edd_filename).val(file);
 					$(parent.window.edd_fileurl).val( "<?php echo self::$bucket; ?>/" + file);
 					parent.window.tb_remove();
@@ -266,15 +266,23 @@ class EDD_Amazon_S3 {
 
 				if( is_array( $buckets ) ) {
 				
-					echo '<ul style="padding-right: 20px; max-height: 500px;overflow-y:scroll;">';
-					foreach ( $buckets as $key => $bucket ) {
+					echo '<table class="wp-list-table widefat fixed striped" style="max-height: 500px;overflow-y:scroll;">';
+					
+						echo '<tr>';
+							echo '<th>' . __( 'Bucket name', 'edd_s3' ) . '</th>';
+							echo '<th>' . __( 'Actions', 'edd_s3' ) . '</th>';
+						echo '</tr>';
 
-						echo '<li style="margin-bottom:0;display:block;height:36px;line-height:36px;">';
-							echo '<a href="' . add_query_arg( 'bucket', $bucket ) . '">' . $bucket . '</a>';
-						echo '</li>';
+						foreach ( $buckets as $key => $bucket ) {
+							echo '<tr>';
+								echo '<td>' . $bucket . '</td>';
+								echo '<td>';
+									echo '<a href="' . add_query_arg( 'bucket', $bucket ) . '">' . __( 'Browse', 'edd_s3' ) . '</a>';
+								echo '</td>';
+							echo '</tr>';
 
-					}
-					echo '</ul>';
+						}
+					echo '</table>';
 				}
 
 			} else {
@@ -285,39 +293,49 @@ class EDD_Amazon_S3 {
 					$i = 0;
 					$total_items = count( $files );
 
-					echo '<button class="button-secondary" onclick="history.back();">' . __( 'Go Back', 'edd_s3' ) . '</button>';
+					echo '<p><button class="button-secondary" onclick="history.back();">' . __( 'Go Back', 'edd_s3' ) . '</button></p>';
 
-					echo '<ul style="padding-right: 20px; max-height: 500px;overflow-y:scroll;">';
-					foreach ( $files as $key => $file ) {
+					echo '<table class="wp-list-table widefat fixed striped" style="max-height: 500px;overflow-y:scroll;">';
+					
+						echo '<tr>';
+							echo '<th>' . __( 'File name', 'edd_s3' ) . '</th>';
+							echo '<th>' . __( 'Actions', 'edd_s3' ) . '</th>';
+						echo '</tr>';
 
-						if( $i == 0)
-							$first_file = $key;
+						foreach ( $files as $key => $file ) {
+							echo '<tr>';
+								if( $i == 0)
+									$first_file = $key;
 
-						if( $i == 14 )
-							$last_file = $key;
+								if( $i == 14 )
+									$last_file = $key;
 
-						if( $file['name'][ strlen( $file['name'] ) - 1 ] === '/' ) {
-							continue; // Don't show folders
+								if( $file['name'][ strlen( $file['name'] ) - 1 ] === '/' ) {
+									continue; // Don't show folders
+								}
+
+								echo '<td style="padding-right:20px;">' . $file['name'] . '</td>';
+								echo '<td>';
+									echo '<a class="insert-s3 button-secondary" href="#" data-s3="' . esc_attr( $file['name'] ) . '">' . __( 'Use File', 'edd_s3' ) . '</a>';
+								echo '</td>';
+							echo '</tr>';
+							$i++;
 						}
-
-						echo '<li style="margin-bottom:0;display:block;height:36px;line-height:36px;">';
-							echo '<a class="insert-s3 button-secondary" href="#" style="float:left;margin:8px 8px 0;">' . __('Use File', 'edd_s3') . '</a>';
-							echo '<span style="display:block;float:left;height:36px;line-height:36px;margin-left:8px;" data-s3="' . $file['name'] . '">' . $file['name'] . '</span>';
-						echo '</li>';
-
-						$i++;
-					}
-					echo '</ul>';
+					echo '</table>';
 				}
 
 				$base = admin_url( 'media-upload.php?post_id=' . absint( $_GET['post_id'] ) . '&tab=s3_library' );
 
+				if( $bucket ) {
+					$base = add_query_arg( 'bucket', $bucket, $base );
+				}
+
 				echo '<div class="s3-pagination tablenav">';
 					echo '<div class="tablenav-pages alignright">';
 						if( isset( $_GET['p'] ) && $_GET['p'] > 1 )
-							echo '<a class="page-numbers prev" href="' . remove_query_arg('p', $base) . '">' . __('Start Over', 'edd_s3') . '</a>';
+							echo '<a class="page-numbers prev" href="' . remove_query_arg( 'p', $base ) . '">' . __( 'Start Over', 'edd_s3' ) . '</a>';
 						if( $i >= 10)
-							echo '<a class="page-numbers next" href="' . add_query_arg(array('p' => $page + 1, 'start' => $last_file), $base) . '">' . __('More', 'edd_s3') . '</a>';
+							echo '<a class="page-numbers next" href="' . add_query_arg( array( 'p' => $page + 1, 'start' => $last_file ), $base ) . '">' . __( 'View More', 'edd_s3' ) . '</a>';
 					echo '</div>';
 				echo '</div>';
 			}
