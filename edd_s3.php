@@ -364,7 +364,16 @@ class EDD_Amazon_S3 {
 
 			$parts    = explode( '/', $filename );
 			$bucket   = $parts[0];
-			$filename = str_replace( $parts[0] . '/', '', $filename );
+
+			if( in_array( $bucket, self::get_s3_buckets() ) ) {
+
+				$filename = str_replace( $parts[0] . '/', '', $filename );
+
+			} else {
+
+				$bucket = self::$bucket;
+
+			}
 
 		} else {
 
