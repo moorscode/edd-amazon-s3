@@ -367,7 +367,7 @@ class EDD_Amazon_S3 {
 
 			if( in_array( $bucket, self::get_s3_buckets() ) ) {
 
-				$filename = str_replace( $parts[0] . '/', '', $filename );
+				$filename = preg_replace( '#^' . $parts[0] . '/#', '', $filename, 1 );
 
 			} else {
 
