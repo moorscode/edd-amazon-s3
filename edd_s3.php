@@ -16,6 +16,7 @@ class EDD_Amazon_S3 {
 	private static $secret_key;
 	private static $bucket;
 	private static $default_expiry;
+	private static $s3;
 
 	/**
 	 * Get active object instance
@@ -59,6 +60,11 @@ class EDD_Amazon_S3 {
 		$this->includes();
 		$this->init();
 
+		self::$s3 = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
+
+		if( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			self::$s3->setExceptions();
+		}
 	}
 
 	/**
@@ -426,7 +432,11 @@ class EDD_Amazon_S3 {
 		$resource          = $s3->inputFile( $file['file'] );
 		$resource['type']  = $file['type'];
 
-		$push_file         = $s3->putObject( $resource, $bucket, $file['name'] );
+		if( ! empty( $file['folder'] ) ) {
+			$file['name'] = trailingslashit( $args['folder'] ) . $file['name'];
+		}
+
+		$push_file = $s3->putObject( $resource, $bucket, $file['name'] );
 		
 		if( $push_file ) {
 			return true;
@@ -586,12 +596,13 @@ class EDD_Amazon_S3 {
 				$args = array(
 					'file' => get_attached_file( $attachment_id, false ),
 					'name' => $file['name'],
-					'type' => get_post_mime_type( $attachment_id )
+					'type' => get_post_mime_type( $attachment_id ),
+					'folder' => 'test-vendor'
 				);
 
 				self::upload_file( $args );
 
-				$files[ $key ]['file'] = edd_get_option( 'edd_amazon_s3_bucket' ) . '/' . basename( $file['file'] );
+				$files[ $key ]['file'] = edd_get_option( 'edd_amazon_s3_bucket' ) . '/' . $args['folder'] . '/' . basename( $file['file'] );
 
 				wp_delete_attachment( $attachment_id, true );
 
