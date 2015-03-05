@@ -432,10 +432,6 @@ class EDD_Amazon_S3 {
 		$resource          = $s3->inputFile( $file['file'] );
 		$resource['type']  = $file['type'];
 
-		if( ! empty( $file['folder'] ) ) {
-			$file['name'] = trailingslashit( $args['folder'] ) . $file['name'];
-		}
-
 		$push_file = $s3->putObject( $resource, $bucket, $file['name'] );
 		
 		if( $push_file ) {
@@ -593,16 +589,17 @@ class EDD_Amazon_S3 {
 					continue;
 				}
 
-				$args = array(
+				$user   = get_userdata( get_current_user_id() );
+				$folder = trailingslashit( $user->user_login );
+				$args   = array(
 					'file' => get_attached_file( $attachment_id, false ),
-					'name' => $file['name'],
-					'type' => get_post_mime_type( $attachment_id ),
-					'folder' => 'test-vendor'
+					'name' => $folder . basename( $file['name'] ),
+					'type' => get_post_mime_type( $attachment_id )
 				);
 
 				self::upload_file( $args );
 
-				$files[ $key ]['file'] = edd_get_option( 'edd_amazon_s3_bucket' ) . '/' . $args['folder'] . '/' . basename( $file['file'] );
+				$files[ $key ]['file'] = edd_get_option( 'edd_amazon_s3_bucket' ) . '/' . $folder . basename( $file['file'] );
 
 				wp_delete_attachment( $attachment_id, true );
 
