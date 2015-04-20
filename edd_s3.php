@@ -3,7 +3,7 @@
 Plugin Name: Easy Digital Downloads - Amazon S3
 Plugin URI: http://easydigitaldownloads.com/extension/amazon-s3/
 Description: Amazon S3 integration with EDD.  Allows you to upload or download directly from your S3 bucket. Configure on Settings > Misc tab
-Version: 2.1.3
+Version: 2.1.4
 Author: Justin Sainton, Pippin Williamson & Brad Vincent
 Author URI:  http://www.zao.is
 Contributors: JustinSainton, mordauk
@@ -78,7 +78,7 @@ class EDD_Amazon_S3 {
 	private function constants() {
 
 		// plugin version
-		define( 'EDD_AS3_VERSION', '2.1.3' );
+		define( 'EDD_AS3_VERSION', '2.1.4' );
 
 		// Set the core file path
 		define( 'EDD_AS3_FILE_PATH', dirname( __FILE__ ) );
@@ -174,7 +174,7 @@ class EDD_Amazon_S3 {
 
 		wp_enqueue_style( 'media' );
 
-		$form_action_url = add_query_arg( array( 'edd_action' => 's3_upload' ), admin_url() );
+		$form_action_url = esc_url( add_query_arg( array( 'edd_action' => 's3_upload' ), admin_url() ) );
 ?>
 		<style>
 		.edd_errors { -webkit-border-radius: 2px; -moz-border-radius: 2px; border-radius: 2px; border: 1px solid #E6DB55; margin: 0 0 21px 0; background: #FFFFE0; color: #333; }
@@ -207,7 +207,7 @@ class EDD_Amazon_S3 {
 				<p>
 					<input type="submit" class="button-secondary" value="<?php esc_attr_e( 'Upload to S3', 'edd-s3' ); ?>"/>
 				</p>
-<?php 
+<?php
 				if( ! empty( $_GET['s3_success'] ) && '1' == $_GET['s3_success'] ) {
 					echo '<div class="edd_errors"><p class="edd_success">' . sprintf( __( 'Success! <a href="#" class="edd-s3-insert">Insert uploaded file into %s</a>.', 'edd_s3' ), edd_get_label_singular() ) . '</p></div>';
 				}
@@ -239,7 +239,7 @@ class EDD_Amazon_S3 {
 		$offset   = $offset < 1 ? 30 : $offset;
 		$start    = isset( $_GET['start'] )  ? rawurldecode( $_GET['start'] )  : '';
 		$bucket   = isset( $_GET['bucket'] ) ? rawurldecode( $_GET['bucket'] ) : false;
-		
+
 		if( ! $bucket ) {
 
 			$buckets = self::get_s3_buckets();
@@ -264,16 +264,16 @@ class EDD_Amazon_S3 {
 			//]]>
 		</script>
 		<div style="margin: 20px 1em 1em; padding-right:20px;" id="media-items">
-			
+
 			<?php
 			if( ! $bucket ) { ?>
 				<h3 class="media-title"><?php _e('Select a Bucket', 'edd_s3'); ?></h3>
 				<?php
 
 				if( is_array( $buckets ) ) {
-				
+
 					echo '<table class="wp-list-table widefat fixed striped" style="max-height: 500px;overflow-y:scroll;">';
-					
+
 						echo '<tr>';
 							echo '<th>' . __( 'Bucket name', 'edd_s3' ) . '</th>';
 							echo '<th>' . __( 'Actions', 'edd_s3' ) . '</th>';
@@ -283,7 +283,7 @@ class EDD_Amazon_S3 {
 							echo '<tr>';
 								echo '<td>' . $bucket . '</td>';
 								echo '<td>';
-									echo '<a href="' . add_query_arg( 'bucket', $bucket ) . '">' . __( 'Browse', 'edd_s3' ) . '</a>';
+									echo '<a href="' . esc_url( add_query_arg( 'bucket', $bucket ) ) . '">' . __( 'Browse', 'edd_s3' ) . '</a>';
 								echo '</td>';
 							echo '</tr>';
 
@@ -302,7 +302,7 @@ class EDD_Amazon_S3 {
 					echo '<p><button class="button-secondary" onclick="history.back();">' . __( 'Go Back', 'edd_s3' ) . '</button></p>';
 
 					echo '<table class="wp-list-table widefat fixed striped" style="max-height: 500px;overflow-y:scroll;">';
-					
+
 						echo '<tr>';
 							echo '<th>' . __( 'File name', 'edd_s3' ) . '</th>';
 							echo '<th>' . __( 'Actions', 'edd_s3' ) . '</th>';
@@ -333,15 +333,15 @@ class EDD_Amazon_S3 {
 				$base = admin_url( 'media-upload.php?post_id=' . absint( $_GET['post_id'] ) . '&tab=s3_library' );
 
 				if( $bucket ) {
-					$base = add_query_arg( 'bucket', $bucket, $base );
+					$base = esc_url( add_query_arg( 'bucket', $bucket, $base ) );
 				}
 
 				echo '<div class="s3-pagination tablenav">';
 					echo '<div class="tablenav-pages alignright">';
 						if( isset( $_GET['p'] ) && $_GET['p'] > 1 )
-							echo '<a class="page-numbers prev" href="' . remove_query_arg( 'p', $base ) . '">' . __( 'Start Over', 'edd_s3' ) . '</a>';
+							echo '<a class="page-numbers prev" href="' . esc_url( remove_query_arg( 'p', $base ) ) . '">' . __( 'Start Over', 'edd_s3' ) . '</a>';
 						if( $i >= 10)
-							echo '<a class="page-numbers next" href="' . add_query_arg( array( 'p' => $page + 1, 'start' => $last_file ), $base ) . '">' . __( 'View More', 'edd_s3' ) . '</a>';
+							echo '<a class="page-numbers next" href="' . esc_url( add_query_arg( array( 'p' => $page + 1, 'start' => $last_file ), $base ) ) . '">' . __( 'View More', 'edd_s3' ) . '</a>';
 					echo '</div>';
 				echo '</div>';
 			}
@@ -407,7 +407,7 @@ class EDD_Amazon_S3 {
 		if( empty( $_FILES['edd_s3_file'] ) || empty( $_FILES['edd_s3_file']['name'] ) ) {
 			wp_die( __( 'Please select a file to upload', 'edd_s3' ), __( 'Error', 'edd_s3' ), array( 'back_link' => true ) );
 		}
-		
+
 		$file = array(
 			'bucket' => $_POST['edd_s3_bucket'],
 			'name'   => $_FILES['edd_s3_file']['name'],
@@ -428,12 +428,12 @@ class EDD_Amazon_S3 {
 
 		$s3                = new S3( self::$access_id, self::$secret_key, false, self::get_host() );
 		$bucket            = empty( $file['bucket'] ) ? self::$bucket : $file['bucket'];
-		
+
 		$resource          = $s3->inputFile( $file['file'] );
 		$resource['type']  = $file['type'];
 
 		$push_file = $s3->putObject( $resource, $bucket, $file['name'] );
-		
+
 		if( $push_file ) {
 			return true;
 		} else {
