@@ -139,6 +139,7 @@ class EDD_Amazon_S3 {
 
 		// intercept the file download and generate an expiring link
 		add_filter( 'edd_requested_file', array( $this, 'generate_url' ), 10, 3 );
+		add_action( 'edd_process_verified_download', array( $this, 'add_set_download_method' ), 10, 3 );
 
 		// add some javascript to the admin
 		add_action( 'admin_head', array( $this, 'admin_js' ) );
@@ -491,11 +492,15 @@ class EDD_Amazon_S3 {
 	            }
 	        }
 
-	        add_filter( 'edd_file_download_method', array( 'EDD_Amazon_S3', 'set_download_method' ) );
-
 			return set_url_scheme( self::get_s3_url( $file_name , $expires ), 'http' );
 	    }
 	    return $file;
+	}
+
+	public static function add_set_download_method( $download, $email, $payment ) {
+
+		add_filter( 'edd_file_download_method', array( 'EDD_Amazon_S3', 'set_download_method' ) );
+
 	}
 
 	public static function set_download_method( $method ) {
