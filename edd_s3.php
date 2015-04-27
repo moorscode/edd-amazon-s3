@@ -139,7 +139,7 @@ class EDD_Amazon_S3 {
 
 		// intercept the file download and generate an expiring link
 		add_filter( 'edd_requested_file', array( $this, 'generate_url' ), 10, 3 );
-		add_action( 'edd_process_verified_download', array( $this, 'add_set_download_method' ), 10, 3 );
+		add_action( 'edd_process_verified_download', array( $this, 'add_set_download_method' ), 10, 4 );
 
 		// add some javascript to the admin
 		add_action( 'admin_head', array( $this, 'admin_js' ) );
@@ -497,14 +497,43 @@ class EDD_Amazon_S3 {
 	    return $file;
 	}
 
-	public static function add_set_download_method( $download, $email, $payment ) {
+	public static function add_set_download_method( $download, $email, $payment, $args = array() ) {
 
-		add_filter( 'edd_file_download_method', array( 'EDD_Amazon_S3', 'set_download_method' ) );
+		if( empty( $args ) ) {
+			return;
+		}
+
+		if( self::is_s3_download( $download, $args['file_key'] ) ) {
+
+			add_filter( 'edd_file_download_method', array( 'EDD_Amazon_S3', 'set_download_method' ) );
+
+		}
 
 	}
 
 	public static function set_download_method( $method ) {
 		return 'redirect';
+	}
+
+	private static function is_s3_download( $download_id = 0, $file_id = 0 ) {
+		
+		$ret   = false;
+		$files = edd_get_download_files( $download_id );
+
+		if( isset( $files[ $file_id ] ) ) {
+
+			$file_name = $files[ $file_id ]['file'];
+
+			// Check whether thsi is an Amazon S3 file or not
+	        if( ( '/' !== $file_name[0] && strpos( $file_name, 'http://' ) === false && strpos( $file_name, 'https://' ) === false && strpos( $file_name, 'ftp://' ) === false ) || false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+
+				$ret = true;
+
+		    }
+
+		}
+
+		return $ret;
 	}
 
     public static function cleanup_filename($old_file_name) {
