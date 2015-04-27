@@ -334,7 +334,7 @@ class EDD_Amazon_S3 {
 				$base = admin_url( 'media-upload.php?post_id=' . absint( $_GET['post_id'] ) . '&tab=s3_library' );
 
 				if( $bucket ) {
-					$base = esc_url( add_query_arg( 'bucket', $bucket, $base ) );
+					$base = add_query_arg( 'bucket', $bucket, $base );
 				}
 
 				echo '<div class="s3-pagination tablenav">';
