@@ -139,6 +139,7 @@ class EDD_Amazon_S3 {
 
 		// intercept the file download and generate an expiring link
 		add_filter( 'edd_requested_file', array( $this, 'generate_url' ), 10, 3 );
+		add_action( 'edd_process_verified_download', array( $this, 'add_set_download_method' ), 10, 4 );
 
 		// add some javascript to the admin
 		add_action( 'admin_head', array( $this, 'admin_js' ) );
@@ -174,7 +175,7 @@ class EDD_Amazon_S3 {
 
 		wp_enqueue_style( 'media' );
 
-		$form_action_url = add_query_arg( array( 'edd_action' => 's3_upload' ), admin_url() );
+		$form_action_url = esc_url( add_query_arg( array( 'edd_action' => 's3_upload' ), admin_url() ) );
 ?>
 		<style>
 		.edd_errors { -webkit-border-radius: 2px; -moz-border-radius: 2px; border-radius: 2px; border: 1px solid #E6DB55; margin: 0 0 21px 0; background: #FFFFE0; color: #333; }
@@ -187,7 +188,7 @@ class EDD_Amazon_S3 {
 				var bucket = "<?php echo EDD()->session->get( 's3_file_bucket' ); ?>";
 				$(parent.window.edd_filename).val(file);
 				$(parent.window.edd_fileurl).val(bucket + '/' + file);
- 				parent.window.tb_remove();
+				parent.window.tb_remove();
 			});
 		});
 		</script>
@@ -207,7 +208,7 @@ class EDD_Amazon_S3 {
 				<p>
 					<input type="submit" class="button-secondary" value="<?php esc_attr_e( 'Upload to S3', 'edd-s3' ); ?>"/>
 				</p>
-<?php 
+<?php
 				if( ! empty( $_GET['s3_success'] ) && '1' == $_GET['s3_success'] ) {
 					echo '<div class="edd_errors"><p class="edd_success">' . sprintf( __( 'Success! <a href="#" class="edd-s3-insert">Insert uploaded file into %s</a>.', 'edd_s3' ), edd_get_label_singular() ) . '</p></div>';
 				}
@@ -239,7 +240,7 @@ class EDD_Amazon_S3 {
 		$offset   = $offset < 1 ? 30 : $offset;
 		$start    = isset( $_GET['start'] )  ? rawurldecode( $_GET['start'] )  : '';
 		$bucket   = isset( $_GET['bucket'] ) ? rawurldecode( $_GET['bucket'] ) : false;
-		
+
 		if( ! $bucket ) {
 
 			$buckets = self::get_s3_buckets();
@@ -264,16 +265,16 @@ class EDD_Amazon_S3 {
 			//]]>
 		</script>
 		<div style="margin: 20px 1em 1em; padding-right:20px;" id="media-items">
-			
+
 			<?php
 			if( ! $bucket ) { ?>
 				<h3 class="media-title"><?php _e('Select a Bucket', 'edd_s3'); ?></h3>
 				<?php
 
 				if( is_array( $buckets ) ) {
-				
+
 					echo '<table class="wp-list-table widefat fixed striped" style="max-height: 500px;overflow-y:scroll;">';
-					
+
 						echo '<tr>';
 							echo '<th>' . __( 'Bucket name', 'edd_s3' ) . '</th>';
 							echo '<th>' . __( 'Actions', 'edd_s3' ) . '</th>';
@@ -283,7 +284,7 @@ class EDD_Amazon_S3 {
 							echo '<tr>';
 								echo '<td>' . $bucket . '</td>';
 								echo '<td>';
-									echo '<a href="' . add_query_arg( 'bucket', $bucket ) . '">' . __( 'Browse', 'edd_s3' ) . '</a>';
+									echo '<a href="' . esc_url( add_query_arg( 'bucket', $bucket ) ) . '">' . __( 'Browse', 'edd_s3' ) . '</a>';
 								echo '</td>';
 							echo '</tr>';
 
@@ -302,7 +303,7 @@ class EDD_Amazon_S3 {
 					echo '<p><button class="button-secondary" onclick="history.back();">' . __( 'Go Back', 'edd_s3' ) . '</button></p>';
 
 					echo '<table class="wp-list-table widefat fixed striped" style="max-height: 500px;overflow-y:scroll;">';
-					
+
 						echo '<tr>';
 							echo '<th>' . __( 'File name', 'edd_s3' ) . '</th>';
 							echo '<th>' . __( 'Actions', 'edd_s3' ) . '</th>';
@@ -333,15 +334,15 @@ class EDD_Amazon_S3 {
 				$base = admin_url( 'media-upload.php?post_id=' . absint( $_GET['post_id'] ) . '&tab=s3_library' );
 
 				if( $bucket ) {
-					$base = add_query_arg( 'bucket', $bucket, $base );
+					$base = esc_url( add_query_arg( 'bucket', $bucket, $base ) );
 				}
 
 				echo '<div class="s3-pagination tablenav">';
 					echo '<div class="tablenav-pages alignright">';
 						if( isset( $_GET['p'] ) && $_GET['p'] > 1 )
-							echo '<a class="page-numbers prev" href="' . remove_query_arg( 'p', $base ) . '">' . __( 'Start Over', 'edd_s3' ) . '</a>';
+							echo '<a class="page-numbers prev" href="' . esc_url( remove_query_arg( 'p', $base ) ) . '">' . __( 'Start Over', 'edd_s3' ) . '</a>';
 						if( $i >= 10)
-							echo '<a class="page-numbers next" href="' . add_query_arg( array( 'p' => $page + 1, 'start' => $last_file ), $base ) . '">' . __( 'View More', 'edd_s3' ) . '</a>';
+							echo '<a class="page-numbers next" href="' . esc_url( add_query_arg( array( 'p' => $page + 1, 'start' => $last_file ), $base ) ) . '">' . __( 'View More', 'edd_s3' ) . '</a>';
 					echo '</div>';
 				echo '</div>';
 			}
@@ -407,7 +408,7 @@ class EDD_Amazon_S3 {
 		if( empty( $_FILES['edd_s3_file'] ) || empty( $_FILES['edd_s3_file']['name'] ) ) {
 			wp_die( __( 'Please select a file to upload', 'edd_s3' ), __( 'Error', 'edd_s3' ), array( 'back_link' => true ) );
 		}
-		
+
 		$file = array(
 			'bucket' => $_POST['edd_s3_bucket'],
 			'name'   => $_FILES['edd_s3_file']['name'],
@@ -428,12 +429,12 @@ class EDD_Amazon_S3 {
 
 		$s3                = new S3( self::$access_id, self::$secret_key, false, self::get_host() );
 		$bucket            = empty( $file['bucket'] ) ? self::$bucket : $file['bucket'];
-		
+
 		$resource          = $s3->inputFile( $file['file'] );
 		$resource['type']  = $file['type'];
 
 		$push_file = $s3->putObject( $resource, $bucket, $file['name'] );
-		
+
 		if( $push_file ) {
 			return true;
 		} else {
@@ -474,44 +475,77 @@ class EDD_Amazon_S3 {
 
 	public static function generate_url($file, $download_files, $file_key) {
 		$file_data = $download_files[$file_key];
-        $file_name = $file_data['file'];
+		$file_name = $file_data['file'];
 
 		// Check whether thsi is an Amazon S3 file or not
-        if( ( '/' !== $file_name[0] && strpos( $file_data['file'], 'http://' ) === false && strpos( $file_data['file'], 'https://' ) === false && strpos( $file_data['file'], 'ftp://' ) === false )|| false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+		if( ( '/' !== $file_name[0] && strpos( $file_data['file'], 'http://' ) === false && strpos( $file_data['file'], 'https://' ) === false && strpos( $file_data['file'], 'ftp://' ) === false )|| false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
 
 			$expires = self::$default_expiry;
 
-	        if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
-	            //we are dealing with a URL prior to Amazon S3 extension 1.4
-	            $file_name = self::cleanup_filename($file_name);
+			if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+				//we are dealing with a URL prior to Amazon S3 extension 1.4
+				$file_name = self::cleanup_filename($file_name);
 
-	            //if we still get back the old format then there is something wrong here and just return the old filename
-	            if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
-	                return $file_name;
-	            }
-	        }
-
-	        add_filter( 'edd_file_download_method', array( 'EDD_Amazon_S3', 'set_download_method' ) );
+				//if we still get back the old format then there is something wrong here and just return the old filename
+				if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+					return $file_name;
+				}
+			}
 
 			return set_url_scheme( self::get_s3_url( $file_name , $expires ), 'http' );
-	    }
-	    return $file;
+		}
+		return $file;
+	}
+
+	public static function add_set_download_method( $download, $email, $payment, $args = array() ) {
+
+		if( empty( $args ) ) {
+			return;
+		}
+
+		if( self::is_s3_download( $download, $args['file_key'] ) ) {
+
+			add_filter( 'edd_file_download_method', array( 'EDD_Amazon_S3', 'set_download_method' ) );
+
+		}
+
 	}
 
 	public static function set_download_method( $method ) {
 		return 'redirect';
 	}
 
-    public static function cleanup_filename($old_file_name) {
-        //strip all amazon querystrings
-        //strip amazon host from url
+	private static function is_s3_download( $download_id = 0, $file_id = 0 ) {
+		
+		$ret   = false;
+		$files = edd_get_download_files( $download_id );
 
-        if ( $url = parse_url( $old_file_name ) ) {
-            return ltrim( $url['path'], '/' );
-        }
+		if( isset( $files[ $file_id ] ) ) {
 
-        return $old_file_name;
-    }
+			$file_name = $files[ $file_id ]['file'];
+
+			// Check whether thsi is an Amazon S3 file or not
+			if( ( '/' !== $file_name[0] && strpos( $file_name, 'http://' ) === false && strpos( $file_name, 'https://' ) === false && strpos( $file_name, 'ftp://' ) === false ) || false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+
+				$ret = true;
+
+			}
+
+		}
+
+		return $ret;
+	}
+
+	public static function cleanup_filename($old_file_name) {
+		//strip all amazon querystrings
+		//strip amazon host from url
+
+		if ( $url = parse_url( $old_file_name ) ) {
+			return ltrim( $url['path'], '/' );
+		}
+
+		return $old_file_name;
+	}
 
 	public static function add_settings( $settings ) {
 
