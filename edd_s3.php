@@ -139,6 +139,7 @@ class EDD_Amazon_S3 {
 
 		// intercept the file download and generate an expiring link
 		add_filter( 'edd_requested_file', array( $this, 'generate_url' ), 10, 3 );
+		add_action( 'edd_process_verified_download', array( $this, 'add_set_download_method' ), 10, 4 );
 
 		// add some javascript to the admin
 		add_action( 'admin_head', array( $this, 'admin_js' ) );
@@ -187,7 +188,7 @@ class EDD_Amazon_S3 {
 				var bucket = "<?php echo EDD()->session->get( 's3_file_bucket' ); ?>";
 				$(parent.window.edd_filename).val(file);
 				$(parent.window.edd_fileurl).val(bucket + '/' + file);
- 				parent.window.tb_remove();
+				parent.window.tb_remove();
 			});
 		});
 		</script>
@@ -474,44 +475,77 @@ class EDD_Amazon_S3 {
 
 	public static function generate_url($file, $download_files, $file_key) {
 		$file_data = $download_files[$file_key];
-        $file_name = $file_data['file'];
+		$file_name = $file_data['file'];
 
 		// Check whether thsi is an Amazon S3 file or not
-        if( ( '/' !== $file_name[0] && strpos( $file_data['file'], 'http://' ) === false && strpos( $file_data['file'], 'https://' ) === false && strpos( $file_data['file'], 'ftp://' ) === false )|| false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+		if( ( '/' !== $file_name[0] && strpos( $file_data['file'], 'http://' ) === false && strpos( $file_data['file'], 'https://' ) === false && strpos( $file_data['file'], 'ftp://' ) === false )|| false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
 
 			$expires = self::$default_expiry;
 
-	        if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
-	            //we are dealing with a URL prior to Amazon S3 extension 1.4
-	            $file_name = self::cleanup_filename($file_name);
+			if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+				//we are dealing with a URL prior to Amazon S3 extension 1.4
+				$file_name = self::cleanup_filename($file_name);
 
-	            //if we still get back the old format then there is something wrong here and just return the old filename
-	            if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
-	                return $file_name;
-	            }
-	        }
-
-	        add_filter( 'edd_file_download_method', array( 'EDD_Amazon_S3', 'set_download_method' ) );
+				//if we still get back the old format then there is something wrong here and just return the old filename
+				if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+					return $file_name;
+				}
+			}
 
 			return set_url_scheme( self::get_s3_url( $file_name , $expires ), 'http' );
-	    }
-	    return $file;
+		}
+		return $file;
+	}
+
+	public static function add_set_download_method( $download, $email, $payment, $args = array() ) {
+
+		if( empty( $args ) ) {
+			return;
+		}
+
+		if( self::is_s3_download( $download, $args['file_key'] ) ) {
+
+			add_filter( 'edd_file_download_method', array( 'EDD_Amazon_S3', 'set_download_method' ) );
+
+		}
+
 	}
 
 	public static function set_download_method( $method ) {
 		return 'redirect';
 	}
 
-    public static function cleanup_filename($old_file_name) {
-        //strip all amazon querystrings
-        //strip amazon host from url
+	private static function is_s3_download( $download_id = 0, $file_id = 0 ) {
+		
+		$ret   = false;
+		$files = edd_get_download_files( $download_id );
 
-        if ( $url = parse_url( $old_file_name ) ) {
-            return ltrim( $url['path'], '/' );
-        }
+		if( isset( $files[ $file_id ] ) ) {
 
-        return $old_file_name;
-    }
+			$file_name = $files[ $file_id ]['file'];
+
+			// Check whether thsi is an Amazon S3 file or not
+			if( ( '/' !== $file_name[0] && strpos( $file_name, 'http://' ) === false && strpos( $file_name, 'https://' ) === false && strpos( $file_name, 'ftp://' ) === false ) || false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+
+				$ret = true;
+
+			}
+
+		}
+
+		return $ret;
+	}
+
+	public static function cleanup_filename($old_file_name) {
+		//strip all amazon querystrings
+		//strip amazon host from url
+
+		if ( $url = parse_url( $old_file_name ) ) {
+			return ltrim( $url['path'], '/' );
+		}
+
+		return $old_file_name;
+	}
 
 	public static function add_settings( $settings ) {
 
