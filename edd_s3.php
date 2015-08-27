@@ -193,6 +193,15 @@ class EDD_Amazon_S3 {
 		});
 		</script>
 		<div class="wrap">
+<?php
+			if( ! self::api_keys_valid() ) : 
+?>
+			<div class="error"><p><?php printf( __( 'Please enter your <a href="%s" target="_blank">Amazon S3 API keys</a>.', 'edd_s3' ), admin_url( 'edit.php?post_type=download&page=edd-settings&tab=extensions' ) ); ?></p></div>
+<?php
+				return;
+			endif;
+?>
+
 			<form enctype="multipart/form-data" method="post" action="<?php echo esc_attr( $form_action_url ); ?>" class="edd-s3-upload">
 				<p>
 					<select name="edd_s3_bucket" id="edd_s3_bucket">
@@ -265,8 +274,14 @@ class EDD_Amazon_S3 {
 			//]]>
 		</script>
 		<div style="margin: 20px 1em 1em; padding-right:20px;" id="media-items">
+<?php
+			if( ! self::api_keys_valid() ) : 
+?>
+			<div class="error"><p><?php printf( __( 'Please enter your <a href="%s" target="blank">Amazon S3 API keys</a>.', 'edd_s3' ), admin_url( 'edit.php?post_type=download&page=edd-settings&tab=extensions' ) ); ?></p></div>
+<?php
+				return;
+			endif;
 
-			<?php
 			if( ! $bucket ) { ?>
 				<h3 class="media-title"><?php _e('Select a Bucket', 'edd_s3'); ?></h3>
 				<?php
@@ -596,6 +611,17 @@ class EDD_Amazon_S3 {
 		);
 
 		return $settings;
+	}
+
+	public static function api_keys_valid() {
+
+		$id  = edd_get_option( 'edd_amazon_s3_id' );
+		$key = edd_get_option( 'edd_amazon_s3_key' );
+
+		if( empty( $id ) || $key ) {
+			return false;
+		}
+		return true;
 	}
 
 	/**
