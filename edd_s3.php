@@ -194,7 +194,7 @@ class EDD_Amazon_S3 {
 		</script>
 		<div class="wrap">
 <?php
-			if( ! self::api_keys_valid() ) : 
+			if( ! self::api_keys_entered() ) : 
 ?>
 			<div class="error"><p><?php printf( __( 'Please enter your <a href="%s" target="_blank">Amazon S3 API keys</a>.', 'edd_s3' ), admin_url( 'edit.php?post_type=download&page=edd-settings&tab=extensions' ) ); ?></p></div>
 <?php
@@ -275,7 +275,7 @@ class EDD_Amazon_S3 {
 		</script>
 		<div style="margin: 20px 1em 1em; padding-right:20px;" id="media-items">
 <?php
-			if( ! self::api_keys_valid() ) : 
+			if( ! self::api_keys_entered() ) : 
 ?>
 			<div class="error"><p><?php printf( __( 'Please enter your <a href="%s" target="blank">Amazon S3 API keys</a>.', 'edd_s3' ), admin_url( 'edit.php?post_type=download&page=edd-settings&tab=extensions' ) ); ?></p></div>
 <?php
@@ -613,7 +613,7 @@ class EDD_Amazon_S3 {
 		return $settings;
 	}
 
-	public static function api_keys_valid() {
+	public static function api_keys_entered() {
 
 		$id  = edd_get_option( 'edd_amazon_s3_id' );
 		$key = edd_get_option( 'edd_amazon_s3_key' );
@@ -621,6 +621,7 @@ class EDD_Amazon_S3 {
 		if( empty( $id ) || empty( $key ) ) {
 			return false;
 		}
+
 		return true;
 	}
 
