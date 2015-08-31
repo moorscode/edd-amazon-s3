@@ -58,6 +58,7 @@ class EDD_Amazon_S3 {
 
 		$this->constants();
 		$this->includes();
+		$this->load_textdomain();
 		$this->init();
 
 		self::$s3 = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
@@ -108,6 +109,38 @@ class EDD_Amazon_S3 {
 			include_once EDD_AS3_FILE_PATH . '/s3.php';
 		}
 	}
+
+        /**
+         * Internationalization
+         *
+         * @access      public
+         * @since       2.1.9
+         * @return      void
+         */
+        public function load_textdomain() {
+		// Set filter for language directory
+		$lang_dir = EDD_AS3_FILE_PATH . '/languages/';
+		$lang_dir = apply_filters( 'edd_amazon_s3_languages_directory', $lang_dir );
+
+		// Traditional WordPress plugin locale filter
+		$locale = apply_filters( 'plugin_locale', get_locale(), 'edd-amazon-s3' );
+		$mofile = sprintf( '%1$s-%2$s.mo', 'edd-amazon-s3', $locale );
+
+		// Setup paths to current locale file
+		$mofile_local   = $lang_dir . $mofile;
+		$mofile_global  = WP_LANG_DIR . '/edd-amazon-s3/' . $mofile;
+
+		if( file_exists( $mofile_global ) ) {
+			// Look in global /wp-content/languages/edd-amazon-s3/ folder
+			load_textdomain( 'edd_s3', $mofile_global );
+		} elseif( file_exists( $mofile_local ) ) {
+			// Look in local /wp-content/plugins/edd-amazon-s3/languages/ folder
+			load_textdomain( 'edd_s3', $mofile_local );
+		} else {
+			// Load the default language files
+			load_plugin_textdomain( 'edd_s3', false, $lang_dir );
+		}
+        }
 
 	/**
 	 * Run action and filter hooks.
@@ -194,7 +227,7 @@ class EDD_Amazon_S3 {
 		</script>
 		<div class="wrap">
 <?php
-			if( ! self::api_keys_entered() ) : 
+			if( ! self::api_keys_entered() ) :
 ?>
 			<div class="error"><p><?php printf( __( 'Please enter your <a href="%s" target="_blank">Amazon S3 API keys</a>.', 'edd_s3' ), admin_url( 'edit.php?post_type=download&page=edd-settings&tab=extensions' ) ); ?></p></div>
 <?php
@@ -215,7 +248,7 @@ class EDD_Amazon_S3 {
 					<input type="file" name="edd_s3_file"/>
 				</p>
 				<p>
-					<input type="submit" class="button-secondary" value="<?php esc_attr_e( 'Upload to S3', 'edd-s3' ); ?>"/>
+					<input type="submit" class="button-secondary" value="<?php esc_attr_e( 'Upload to S3', 'edd_s3' ); ?>"/>
 				</p>
 <?php
 				if( ! empty( $_GET['s3_success'] ) && '1' == $_GET['s3_success'] ) {
@@ -275,7 +308,7 @@ class EDD_Amazon_S3 {
 		</script>
 		<div style="margin: 20px 1em 1em; padding-right:20px;" id="media-items">
 <?php
-			if( ! self::api_keys_entered() ) : 
+			if( ! self::api_keys_entered() ) :
 ?>
 			<div class="error"><p><?php printf( __( 'Please enter your <a href="%s" target="blank">Amazon S3 API keys</a>.', 'edd_s3' ), admin_url( 'edit.php?post_type=download&page=edd-settings&tab=extensions' ) ); ?></p></div>
 <?php
@@ -531,7 +564,7 @@ class EDD_Amazon_S3 {
 	}
 
 	private static function is_s3_download( $download_id = 0, $file_id = 0 ) {
-		
+
 		$ret   = false;
 		$files = edd_get_download_files( $download_id );
 

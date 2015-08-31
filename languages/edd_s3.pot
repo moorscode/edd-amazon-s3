@@ -1,0 +1,189 @@
+#, fuzzy
+msgid ""
+msgstr ""
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+"Project-Id-Version: Easy Digital Downloads - Amazon S3\n"
+"POT-Creation-Date: 2015-08-31 16:59-0400\n"
+"PO-Revision-Date: 2015-08-31 16:58-0400\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 1.8.4\n"
+"X-Poedit-Basepath: ..\n"
+"X-Poedit-WPHeader: edd_s3.php\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"X-Poedit-KeywordsList: __;_e;_n:1,2;_x:1,2c;_ex:1,2c;_nx:4c,1,2;esc_attr__;"
+"esc_attr_e;esc_attr_x:1,2c;esc_html__;esc_html_e;esc_html_x:1,2c;_n_noop:1,2;"
+"_nx_noop:3c,1,2;__ngettext_noop:1,2\n"
+"X-Poedit-SearchPath-0: .\n"
+"X-Poedit-SearchPathExcluded-0: *.js\n"
+
+#: edd_s3.php:188
+msgid "Upload to Amazon S3"
+msgstr ""
+
+#: edd_s3.php:189
+msgid "Amazon S3 Library"
+msgstr ""
+
+#: edd_s3.php:232
+#, php-format
+msgid ""
+"Please enter your <a href=\"%s\" target=\"_blank\">Amazon S3 API keys</a>."
+msgstr ""
+
+#: edd_s3.php:245
+msgid "Select a bucket to upload the file to"
+msgstr ""
+
+#: edd_s3.php:251
+msgid "Upload to S3"
+msgstr ""
+
+#: edd_s3.php:255
+#, php-format
+msgid ""
+"Success! <a href=\"#\" class=\"edd-s3-insert\">Insert uploaded file into %s</"
+"a>."
+msgstr ""
+
+#: edd_s3.php:313
+#, php-format
+msgid ""
+"Please enter your <a href=\"%s\" target=\"blank\">Amazon S3 API keys</a>."
+msgstr ""
+
+#: edd_s3.php:319
+msgid "Select a Bucket"
+msgstr ""
+
+#: edd_s3.php:327
+msgid "Bucket name"
+msgstr ""
+
+#: edd_s3.php:328 edd_s3.php:357
+msgid "Actions"
+msgstr ""
+
+#: edd_s3.php:335
+msgid "Browse"
+msgstr ""
+
+#: edd_s3.php:351
+msgid "Go Back"
+msgstr ""
+
+#: edd_s3.php:356
+msgid "File name"
+msgstr ""
+
+#: edd_s3.php:374
+msgid "Use File"
+msgstr ""
+
+#: edd_s3.php:391
+msgid "Start Over"
+msgstr ""
+
+#: edd_s3.php:393
+msgid "View More"
+msgstr ""
+
+#: edd_s3.php:453
+msgid "You do not have permission to upload files to S3"
+msgstr ""
+
+#: edd_s3.php:457
+msgid "Please select a file to upload"
+msgstr ""
+
+#: edd_s3.php:457 edd_s3.php:472
+msgid "Error"
+msgstr ""
+
+#: edd_s3.php:472
+msgid "Something went wrong during the upload process"
+msgstr ""
+
+#: edd_s3.php:602
+msgid "<strong>Amazon S3 Settings</strong>"
+msgstr ""
+
+#: edd_s3.php:609
+msgid "Amazon S3 Access Key ID"
+msgstr ""
+
+#: edd_s3.php:610
+msgid ""
+"After logging into your S3 account, click on \"Security Credentials\" in the "
+"sidebar.  Scroll down to \"Access Credentials\" and you will see your Access "
+"Key ID.  Copy and paste it here."
+msgstr ""
+
+#: edd_s3.php:617
+msgid "Amazon S3 Secret Key"
+msgstr ""
+
+#: edd_s3.php:618
+msgid ""
+"In the same Access Credentials area, your \"Secret Key\" will be hidden.  "
+"You will need to click the \"Show\" link to see it.  Copy and paste it here."
+msgstr ""
+
+#: edd_s3.php:625
+msgid "Amazon S3 Bucket"
+msgstr ""
+
+#: edd_s3.php:626
+#, php-format
+msgid ""
+"To create new buckets or get a listing of your current buckets, go to your "
+"<a href=\"%s\">S3 Console</a> (you must be logged in to access the "
+"console).  Your buckets will be listed on the left.  Enter the name of the "
+"default bucket you would like to use here."
+msgstr ""
+
+#: edd_s3.php:632
+msgid "Amazon S3 Host"
+msgstr ""
+
+#: edd_s3.php:633
+msgid ""
+"Set the host you wish to use. Leave default if you do not know what this is "
+"for"
+msgstr ""
+
+#: edd_s3.php:640
+msgid "Link Expiry Time"
+msgstr ""
+
+#: edd_s3.php:641
+msgid ""
+"Amazon S3 links expire after a certain amount of time. This default number "
+"of minutes will be used when capturing file downloads, but can be overriden "
+"per file if needed."
+msgstr ""
+
+#. Plugin Name of the plugin/theme
+msgid "Easy Digital Downloads - Amazon S3"
+msgstr ""
+
+#. Plugin URI of the plugin/theme
+msgid "http://easydigitaldownloads.com/extension/amazon-s3/"
+msgstr ""
+
+#. Description of the plugin/theme
+msgid ""
+"Amazon S3 integration with EDD.  Allows you to upload or download directly "
+"from your S3 bucket. Configure on Settings > Extensions tab"
+msgstr ""
+
+#. Author of the plugin/theme
+msgid "Justin Sainton, Pippin Williamson & Brad Vincent"
+msgstr ""
+
+#. Author URI of the plugin/theme
+msgid "http://www.zao.is"
+msgstr ""
