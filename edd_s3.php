@@ -7,6 +7,8 @@ Version: 2.1.8
 Author: Justin Sainton, Pippin Williamson & Brad Vincent
 Author URI:  http://www.zao.is
 Contributors: JustinSainton, mordauk
+Text Domain: edd_s3
+Domain Path: languages
 */
 
 class EDD_Amazon_S3 {
