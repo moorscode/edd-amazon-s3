@@ -32,7 +32,7 @@
 * Amazon S3 PHP class
 *
 * @link http://undesigned.org.za/2007/10/22/amazon-s3-php-class
-* @version 0.5.1-dev
+* @version 0.5.1
 */
 class S3
 {
@@ -56,7 +56,7 @@ class S3
 	 * @static
 	 */
 	private static $__accessKey = null;
-	
+
 	/**
 	 * AWS Secret Key
 	 *
@@ -65,7 +65,7 @@ class S3
 	 * @static
 	 */
 	private static $__secretKey = null;
-	
+
 	/**
 	 * SSL Client key
 	 *
@@ -74,7 +74,15 @@ class S3
 	 * @static
 	 */
 	private static $__sslKey = null;
-	
+
+	/**
+	 * Default delimiter to be used, for example while getBucket().
+	 * @var string
+	 * @access public
+	 * @static
+	 */
+	public static $defDelimiter = null;
+
 	/**
 	 * AWS URI
 	 *
@@ -83,7 +91,7 @@ class S3
 	 * @static
 	 */
 	public static $endpoint = 's3.amazonaws.com';
-	
+
 	/**
 	 * Proxy information
 	 *
@@ -92,7 +100,7 @@ class S3
 	 * @static
 	 */
 	public static $proxy = null;
-	
+
 	/**
 	 * Connect using SSL?
 	 *
@@ -101,7 +109,7 @@ class S3
 	 * @static
 	 */
 	public static $useSSL = false;
-	
+
 	/**
 	 * Use SSL validation?
 	 *
@@ -110,7 +118,16 @@ class S3
 	 * @static
 	 */
 	public static $useSSLValidation = true;
-	
+
+	/**
+	 * Use SSL version
+	 *
+	 * @var const
+	 * @access public
+	 * @static
+	 */
+	public static $useSSLVersion = CURL_SSLVERSION_TLSv1;
+
 	/**
 	 * Use PHP exceptions?
 	 *
@@ -135,7 +152,7 @@ class S3
 	 * @static
 	 */
 	public static $sslKey = null;
-	
+
 	/**
 	 * SSL client certfificate
 	 *
@@ -144,7 +161,7 @@ class S3
 	 * @static
 	 */
 	public static $sslCert = null;
-	
+
 	/**
 	 * SSL CA cert (only required if you are having problems with your system CA cert)
 	 *
@@ -153,7 +170,7 @@ class S3
 	 * @static
 	 */
 	public static $sslCACert = null;
-	
+
 	/**
 	 * AWS Key Pair ID
 	 *
@@ -162,13 +179,13 @@ class S3
 	 * @static
 	 */
 	private static $__signingKeyPairId = null;
-	
+
 	/**
 	 * Key resource, freeSigningKey() must be called to clear it from memory
 	 *
 	 * @var bool
 	 * @access private
-	 * @static 
+	 * @static
 	 */
 	private static $__signingKeyResource = false;
 
@@ -201,6 +218,7 @@ class S3
 	{
 		self::$endpoint = $host;
 	}
+
 
 	/**
 	* Set AWS access key and secret key
@@ -300,7 +318,7 @@ class S3
 			$rest = new S3Request('HEAD');
 			$rest = $rest->getResponse();
 			$awstime = $rest->headers['date'];
-			$systime = time();			
+			$systime = time();
 			$offset = $systime > $awstime ? -($systime - $awstime) : ($awstime - $systime);
 		}
 		self::$__timeOffset = $offset;
@@ -349,10 +367,7 @@ class S3
 	*/
 	private static function __triggerError($message, $file, $line, $code = 0)
 	{
-		if (self::$useExceptions)
-			throw new S3Exception($message, $file, $line, $code);
-		else
-			trigger_error($message, E_USER_WARNING);
+		edd_set_error( 'edd-amazon-s3', $message . ' - ' . $file . ':' . $line . "\n" . 'Code: ' . $code );
 	}
 
 
@@ -416,6 +431,7 @@ class S3
 		if ($marker !== null && $marker !== '') $rest->setParameter('marker', $marker);
 		if ($maxKeys !== null && $maxKeys !== '') $rest->setParameter('max-keys', $maxKeys);
 		if ($delimiter !== null && $delimiter !== '') $rest->setParameter('delimiter', $delimiter);
+		else if (!empty(self::$defDelimiter)) $rest->setParameter('delimiter', self::$defDelimiter);
 		$response = $rest->getResponse();
 		if ($response->error === false && $response->code !== 200)
 			$response->error = array('code' => $response->code, 'message' => 'Unexpected HTTP status');
@@ -561,6 +577,7 @@ class S3
 			self::__triggerError('S3::inputFile(): Unable to open input file: '.$file, __FILE__, __LINE__);
 			return false;
 		}
+		clearstatcache(false, $file);
 		return array('file' => $file, 'size' => filesize($file), 'md5sum' => $md5sum !== false ?
 		(is_string($md5sum) ? $md5sum : base64_encode(md5_file($file, true))) : '');
 	}
@@ -634,15 +651,18 @@ class S3
 		if (isset($input['size']) && $input['size'] >= 0)
 			$rest->size = $input['size'];
 		else {
-			if (isset($input['file']))
+			if (isset($input['file'])) {
+				clearstatcache(false, $input['file']);
 				$rest->size = filesize($input['file']);
+			}
 			elseif (isset($input['data']))
 				$rest->size = strlen($input['data']);
 		}
 
 		// Custom request headers (Content-Type, Content-Disposition, Content-Encoding)
 		if (is_array($requestHeaders))
-			foreach ($requestHeaders as $h => $v) $rest->setHeader($h, $v);
+			foreach ($requestHeaders as $h => $v)
+				strpos($h, 'x-amz-') === 0 ? $rest->setAmzHeader($h, $v) : $rest->setHeader($h, $v);
 		elseif (is_string($requestHeaders)) // Support for legacy contentType parameter
 			$input['type'] = $requestHeaders;
 
@@ -797,7 +817,8 @@ class S3
 	{
 		$rest = new S3Request('PUT', $bucket, $uri, self::$endpoint);
 		$rest->setHeader('Content-Length', 0);
-		foreach ($requestHeaders as $h => $v) $rest->setHeader($h, $v);
+		foreach ($requestHeaders as $h => $v)
+				strpos($h, 'x-amz-') === 0 ? $rest->setAmzHeader($h, $v) : $rest->setHeader($h, $v);
 		foreach ($metaHeaders as $h => $v) $rest->setAmzHeader('x-amz-meta-'.$h, $v);
 		if ($storageClass !== self::STORAGE_CLASS_STANDARD) // Storage class
 			$rest->setAmzHeader('x-amz-storage-class', $storageClass);
@@ -1157,7 +1178,7 @@ class S3
 		$expires = self::__getTime() + $lifetime;
 		$uri = str_replace(array('%2F', '%2B'), array('/', '+'), rawurlencode($uri));
 		return sprintf(($https ? 'https' : 'http').'://%s/%s?AWSAccessKeyId=%s&Expires=%u&Signature=%s',
-		// $hostBucket ? $bucket : $bucket.'.s3.amazonaws.com', $uri, self::$__accessKey, $expires,
+		// $hostBucket ? $bucket : $bucket.'.s3.amazonaws.com', $uri, $this->$__accessKey, $expires,
 		$hostBucket ? $bucket : $bucket . '.' . self::$endpoint, $uri, self::$__accessKey, $expires,
 		urlencode(self::__getHash("GET\n\n\n{$expires}\n/{$bucket}/{$uri}")));
 	}
@@ -1802,7 +1823,7 @@ class S3
 			'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'gif' => 'image/gif',
 			'png' => 'image/png', 'ico' => 'image/x-icon', 'pdf' => 'application/pdf',
 			'tif' => 'image/tiff', 'tiff' => 'image/tiff', 'svg' => 'image/svg+xml',
-			'svgz' => 'image/svg+xml', 'swf' => 'application/x-shockwave-flash', 
+			'svgz' => 'image/svg+xml', 'swf' => 'application/x-shockwave-flash',
 			'zip' => 'application/zip', 'gz' => 'application/x-gzip',
 			'tar' => 'application/x-tar', 'bz' => 'application/x-bzip',
 			'bz2' => 'application/x-bzip2',  'rar' => 'application/x-rar-compressed',
@@ -1885,7 +1906,7 @@ class S3
 }
 
 /**
- * S3 Request class 
+ * S3 Request class
  *
  * @link http://undesigned.org.za/2007/10/22/amazon-s3-php-class
  * @version 0.5.0-dev
@@ -1896,10 +1917,10 @@ final class S3Request
 	 * AWS URI
 	 *
 	 * @var string
-	 * @access private
+	 * @access pricate
 	 */
 	private $endpoint;
-	
+
 	/**
 	 * Verb
 	 *
@@ -1907,7 +1928,7 @@ final class S3Request
 	 * @access private
 	 */
 	private $verb;
-	
+
 	/**
 	 * S3 bucket name
 	 *
@@ -1915,7 +1936,7 @@ final class S3Request
 	 * @access private
 	 */
 	private $bucket;
-	
+
 	/**
 	 * Object URI
 	 *
@@ -1923,7 +1944,7 @@ final class S3Request
 	 * @access private
 	 */
 	private $uri;
-	
+
 	/**
 	 * Final object URI
 	 *
@@ -1931,7 +1952,7 @@ final class S3Request
 	 * @access private
 	 */
 	private $resource = '';
-	
+
 	/**
 	 * Additional request parameters
 	 *
@@ -1939,7 +1960,7 @@ final class S3Request
 	 * @access private
 	 */
 	private $parameters = array();
-	
+
 	/**
 	 * Amazon specific request headers
 	 *
@@ -2002,7 +2023,7 @@ final class S3Request
 	*/
 	function __construct($verb, $bucket = '', $uri = '', $endpoint = 's3.amazonaws.com')
 	{
-		
+
 		$this->endpoint = $endpoint;
 		$this->verb = $verb;
 		$this->bucket = $bucket;
@@ -2117,6 +2138,9 @@ final class S3Request
 
 		if (S3::$useSSL)
 		{
+			// Set protocol version
+			curl_setopt($curl, CURLOPT_SSLVERSION, S3::$useSSLVersion);
+
 			// SSL Validation can now be optional for those with broken OpenSSL installations
 			curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, S3::$useSSLValidation ? 2 : 0);
 			curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, S3::$useSSLValidation ? 1 : 0);
@@ -2180,7 +2204,6 @@ final class S3Request
 		if( ini_get( 'open_basedir' ) ) {
 			curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
 		}
-
 		// Request types
 		switch ($this->verb)
 		{
@@ -2294,6 +2317,7 @@ final class S3Request
 	private function __dnsBucketName($bucket)
 	{
 		if (strlen($bucket) > 63 || preg_match("/[^a-z0-9\.-]/", $bucket) > 0) return false;
+		if (S3::$useSSL && strstr($bucket, '.') !== false) return false;
 		if (strstr($bucket, '-.') !== false) return false;
 		if (strstr($bucket, '..') !== false) return false;
 		if (!preg_match("/^[0-9a-z]/", $bucket)) return false;
