@@ -249,12 +249,27 @@ class EDD_Amazon_S3 {
 <?php
 				return;
 			endif;
+
+			$buckets = $this->get_s3_buckets();
+			if ( empty( $buckets ) ) {
+				$errors = edd_get_errors();
+				if ( array_key_exists( 'edd-amazon-s3', $errors ) ) {
+					if ( current_user_can( 'manage_options' ) ) {
+						$message = $errors['edd-amazon-s3'];
+					} else {
+						$message = __( 'Error retrieving file. Please contact the site administrator.', 'edd_s3' );
+					}
+
+					echo '<div class="update error"><p>' . $message . '</p></div>';
+					exit;
+				}
+			}
 ?>
 
 			<form enctype="multipart/form-data" method="post" action="<?php echo esc_attr( $form_action_url ); ?>" class="edd-s3-upload">
 				<p>
 					<select name="edd_s3_bucket" id="edd_s3_bucket">
-					<?php foreach ( $this->get_s3_buckets() as $key => $bucket ) : ?>
+					<?php foreach ( $buckets as $key => $bucket ) : ?>
 						<option value="<?php echo $bucket; ?>"><?php echo $bucket; ?></option>
 					<?php endforeach; ?>
 					</select>
@@ -308,6 +323,20 @@ class EDD_Amazon_S3 {
 			$this->bucket = $bucket;
 			$files = $this->get_s3_files( $start, $offset );
 
+		}
+
+		if ( empty( $bucket ) ) {
+			$errors = edd_get_errors();
+			if ( array_key_exists( 'edd-amazon-s3', $errors ) ) {
+				if ( current_user_can( 'manage_options' ) ) {
+					$message = $errors['edd-amazon-s3'];
+				} else {
+					$message = __( 'Error retrieving file. Please contact the site administrator.', 'edd_s3' );
+				}
+
+				echo '<div class="update error"><p>' . $message . '</p></div>';
+				exit;
+			}
 		}
 ?>
 		<script type="text/javascript">
