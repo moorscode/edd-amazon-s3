@@ -14,11 +14,11 @@ Domain Path: languages
 class EDD_Amazon_S3 {
 
 	private static $instance;
-	private static $access_id;
-	private static $secret_key;
-	private static $bucket;
-	private static $default_expiry;
-	private static $s3;
+	private $access_id;
+	private $secret_key;
+	private $bucket;
+	private $default_expiry;
+	private $s3;
 
 	/**
 	 * Get active object instance
@@ -31,8 +31,9 @@ class EDD_Amazon_S3 {
 	 */
 	public static function get_instance() {
 
-		if ( ! self::$instance )
+		if ( ! self::$instance ) {
 			self::$instance = new EDD_Amazon_S3();
+		}
 
 		return self::$instance;
 	}
@@ -45,7 +46,7 @@ class EDD_Amazon_S3 {
 	 * @access public
 	 * @return void
 	 */
-	public function __construct() {
+	private function __construct() {
 
 		global $edd_options;
 
@@ -53,20 +54,20 @@ class EDD_Amazon_S3 {
 			return;
 		}
 
-		self::$access_id      = isset( $edd_options['edd_amazon_s3_id'] )             ? trim( $edd_options['edd_amazon_s3_id'] )             : '';
-		self::$secret_key     = isset( $edd_options['edd_amazon_s3_key'] )            ? trim( $edd_options['edd_amazon_s3_key'] )            : '';
-		self::$bucket         = isset( $edd_options['edd_amazon_s3_bucket'] )         ? trim( $edd_options['edd_amazon_s3_bucket'] )         : '';
-		self::$default_expiry = isset( $edd_options['edd_amazon_s3_default_expiry'] ) ? trim( $edd_options['edd_amazon_s3_default_expiry'] ) : '5';
+		$this->access_id      = isset( $edd_options['edd_amazon_s3_id'] )             ? trim( $edd_options['edd_amazon_s3_id'] )             : '';
+		$this->secret_key     = isset( $edd_options['edd_amazon_s3_key'] )            ? trim( $edd_options['edd_amazon_s3_key'] )            : '';
+		$this->bucket         = isset( $edd_options['edd_amazon_s3_bucket'] )         ? trim( $edd_options['edd_amazon_s3_bucket'] )         : '';
+		$this->default_expiry = isset( $edd_options['edd_amazon_s3_default_expiry'] ) ? trim( $edd_options['edd_amazon_s3_default_expiry'] ) : '5';
 
 		$this->constants();
 		$this->includes();
 		$this->load_textdomain();
 		$this->init();
 
-		self::$s3 = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
+		$this->s3 = new S3( $this->access_id, $this->secret_key, is_ssl(), $this->get_host() );
 
 		if( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			self::$s3->setExceptions();
+			$this->s3->setExceptions();
 		}
 	}
 
@@ -110,16 +111,17 @@ class EDD_Amazon_S3 {
 		if ( ! class_exists( 'S3' ) ) {
 			include_once EDD_AS3_FILE_PATH . '/s3.php';
 		}
+
 	}
 
-        /**
-         * Internationalization
-         *
-         * @access      public
-         * @since       2.1.9
-         * @return      void
-         */
-        public function load_textdomain() {
+		/**
+		 * Internationalization
+		 *
+		 * @access      public
+		 * @since       2.1.9
+		 * @return      void
+		 */
+		public function load_textdomain() {
 		// Set filter for language directory
 		$lang_dir = EDD_AS3_FILE_PATH . '/languages/';
 		$lang_dir = apply_filters( 'edd_amazon_s3_languages_directory', $lang_dir );
@@ -142,7 +144,7 @@ class EDD_Amazon_S3 {
 			// Load the default language files
 			load_plugin_textdomain( 'edd_s3', false, $lang_dir );
 		}
-        }
+		}
 
 	/**
 	 * Run action and filter hooks.
@@ -181,9 +183,21 @@ class EDD_Amazon_S3 {
 
 		add_filter( 'fes_pre_files_save', array( $this, 'send_fes_files_to_s3' ), 10, 2 );
 
+		add_action( 'admin_notices', array( $this, 'show_admin_notices' ), 10 );
+
 	}
 
-	public static function s3_tabs( $tabs ) {
+	public function show_admin_notices() {
+
+		if ( empty( $this->access_id ) || empty( $this->secret_key ) ) {
+			$url = admin_url( 'edit.php?post_type=download&page=edd-settings&tab=extensions' );
+			echo '<div class="update error"><p>' . sprintf( __( 'Please enter your <a href="%s">Amazon S3 Access Key ID and Secret Key</a>', 'edd_s3' ), $url ) . '</p></div>';
+		}
+
+
+	}
+
+	public function s3_tabs( $tabs ) {
 
 		if ( ! wp_script_is( 'fes_form', 'enqueued' ) ) {
 
@@ -195,7 +209,7 @@ class EDD_Amazon_S3 {
 		return $tabs;
 	}
 
-	public static function s3_upload_iframe() {
+	public function s3_upload_iframe() {
 
 		if ( ! empty( $_POST ) ) {
 			$return = media_upload_form_handler();
@@ -203,10 +217,10 @@ class EDD_Amazon_S3 {
 				return $return;
 		}
 
-		wp_iframe( array( 'EDD_Amazon_S3', 's3_upload_download_tab' ) );
+		wp_iframe( array( $this, 's3_upload_download_tab' ) );
 	}
 
-	public static function s3_upload_download_tab( $type = 'file', $errors = null, $id = null ) {
+	public function s3_upload_download_tab( $type = 'file', $errors = null, $id = null ) {
 
 		wp_enqueue_style( 'media' );
 
@@ -229,18 +243,33 @@ class EDD_Amazon_S3 {
 		</script>
 		<div class="wrap">
 <?php
-			if( ! self::api_keys_entered() ) :
+			if( ! $this->api_keys_entered() ) :
 ?>
 			<div class="error"><p><?php printf( __( 'Please enter your <a href="%s" target="_blank">Amazon S3 API keys</a>.', 'edd_s3' ), admin_url( 'edit.php?post_type=download&page=edd-settings&tab=extensions' ) ); ?></p></div>
 <?php
 				return;
 			endif;
+
+			$buckets = $this->get_s3_buckets();
+			if ( empty( $buckets ) ) {
+				$errors = edd_get_errors();
+				if ( array_key_exists( 'edd-amazon-s3', $errors ) ) {
+					if ( current_user_can( 'manage_options' ) ) {
+						$message = $errors['edd-amazon-s3'];
+					} else {
+						$message = __( 'Error retrieving file. Please contact the site administrator.', 'edd_s3' );
+					}
+
+					echo '<div class="update error"><p>' . $message . '</p></div>';
+					exit;
+				}
+			}
 ?>
 
 			<form enctype="multipart/form-data" method="post" action="<?php echo esc_attr( $form_action_url ); ?>" class="edd-s3-upload">
 				<p>
 					<select name="edd_s3_bucket" id="edd_s3_bucket">
-					<?php foreach ( self::get_s3_buckets() as $key => $bucket ) : ?>
+					<?php foreach ( $buckets as $key => $bucket ) : ?>
 						<option value="<?php echo $bucket; ?>"><?php echo $bucket; ?></option>
 					<?php endforeach; ?>
 					</select>
@@ -262,7 +291,7 @@ class EDD_Amazon_S3 {
 <?php
 	}
 
-	public static function s3_library_iframe() {
+	public function s3_library_iframe() {
 
 		if ( ! empty( $_POST ) ) {
 			$return = media_upload_form_handler();
@@ -270,10 +299,10 @@ class EDD_Amazon_S3 {
 				return $return;
 		}
 
-		wp_iframe( array( 'EDD_Amazon_S3', 's3_library_tab' ) );
+		wp_iframe( array( $this, 's3_library_tab' ) );
 	}
 
-	public static function s3_library_tab( $type = 'file', $errors = null, $id = null ) {
+	public function s3_library_tab( $type = 'file', $errors = null, $id = null ) {
 
 		media_upload_header();
 		wp_enqueue_style( 'media' );
@@ -287,12 +316,38 @@ class EDD_Amazon_S3 {
 
 		if( ! $bucket ) {
 
-			$buckets = self::get_s3_buckets();
+			$buckets = $this->get_s3_buckets();
+			if ( false === $buckets ) {
+				$errors = edd_get_errors();
+				if ( array_key_exists( 'edd-amazon-s3', $errors ) ) {
+					if ( current_user_can( 'manage_options' ) ) {
+						$message = $errors['edd-amazon-s3'];
+					} else {
+						$message = __( 'Error retrieving file. Please contact the site administrator.', 'edd_s3' );
+					}
 
+					echo '<div class="update error"><p>' . $message . '</p></div>';
+					exit;
+				}
+			}
 		} else {
 
-			self::$bucket = $bucket;
-			$files = self::get_s3_files( $start, $offset );
+			$this->bucket = $bucket;
+			$files = $this->get_s3_files( $start, $offset );
+
+			if ( false === $files ) {
+				$errors = edd_get_errors();
+				if ( array_key_exists( 'edd-amazon-s3', $errors ) ) {
+					if ( current_user_can( 'manage_options' ) ) {
+						$message = $errors['edd-amazon-s3'];
+					} else {
+						$message = __( 'Error retrieving file. Please contact the site administrator.', 'edd_s3' );
+					}
+
+					echo '<div class="update error"><p>' . $message . '</p></div>';
+					exit;
+				}
+			}
 
 		}
 ?>
@@ -302,7 +357,7 @@ class EDD_Amazon_S3 {
 				$('.insert-s3').on('click', function() {
 					var file = $(this).data('s3');
 					$(parent.window.edd_filename).val(file);
-					$(parent.window.edd_fileurl).val( "<?php echo self::$bucket; ?>/" + file);
+					$(parent.window.edd_fileurl).val( "<?php echo $this->bucket; ?>/" + file);
 					parent.window.tb_remove();
 				});
 			});
@@ -310,7 +365,7 @@ class EDD_Amazon_S3 {
 		</script>
 		<div style="margin: 20px 1em 1em; padding-right:20px;" id="media-items">
 <?php
-			if( ! self::api_keys_entered() ) :
+			if( ! $this->api_keys_entered() ) :
 ?>
 			<div class="error"><p><?php printf( __( 'Please enter your <a href="%s" target="blank">Amazon S3 API keys</a>.', 'edd_s3' ), admin_url( 'edit.php?post_type=download&page=edd-settings&tab=extensions' ) ); ?></p></div>
 <?php
@@ -401,49 +456,55 @@ class EDD_Amazon_S3 {
 <?php
 	}
 
-	public static function get_s3_buckets( $marker = null, $max = null ) {
-
-		$s3 = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
-		return $s3->listBuckets();
+	public function get_s3_buckets( $marker = null, $max = null ) {
+		return $this->s3->listBuckets();
 	}
 
-	public static function get_s3_files( $marker = null, $max = null ) {
-
-		$s3 = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
-		return $s3->getBucket( self::$bucket, null, $marker, $max );
+	public function get_s3_files( $marker = null, $max = null ) {
+		return $this->s3->getBucket( $this->bucket, null, $marker, $max );
 	}
 
-	public static function get_s3_url( $filename, $expires = 5 ) {
-
-		$s3 = new S3( self::$access_id, self::$secret_key, is_ssl(), self::get_host() );
+	public function get_s3_url( $filename, $expires = 5 ) {
 
 		if( false !== strpos( $filename, '/' ) ) {
 
 			$parts    = explode( '/', $filename );
 			$bucket   = $parts[0];
+			$buckets  = $this->get_s3_buckets();
 
-			if( in_array( $bucket, self::get_s3_buckets() ) ) {
+			if ( empty( $buckets ) ) {
+				$errors = edd_get_errors();
+				if ( array_key_exists( 'edd-amazon-s3', $errors ) ) {
+					if ( current_user_can( 'manage_options' ) ) {
+						wp_die( $errors['edd-amazon-s3'] );
+					} else {
+						wp_die( __( 'Error retrieving file. Please contact the site administrator.', 'edd_s3' ) );
+					}
+				}
+			}
+
+			if( in_array( $bucket, $buckets ) ) {
 
 				$filename = preg_replace( '#^' . $parts[0] . '/#', '', $filename, 1 );
 
 			} else {
 
-				$bucket = self::$bucket;
+				$bucket = $this->bucket;
 
 			}
 
 		} else {
 
-			$bucket = self::$bucket;
+			$bucket = $this->bucket;
 
 		}
 
-		$url = $s3->getAuthenticatedURL( $bucket, $filename, ( 60 * $expires ), false, is_ssl() );
+		$url = $this->s3->getAuthenticatedURL( $bucket, $filename, ( 60 * $expires ), false, is_ssl() );
 
 		return $url;
 	}
 
-	public static function upload_handler() {
+	public function upload_handler() {
 
 		if( ! is_admin() ) {
 			return;
@@ -466,7 +527,7 @@ class EDD_Amazon_S3 {
 			'type'   => $_FILES['edd_s3_file']['type']
 		);
 
-		if( self::upload_file( $file ) ) {
+		if( $this->upload_file( $file ) ) {
 			EDD()->session->set( 's3_file_name', $file['name'] );
 			EDD()->session->set( 's3_file_bucket', $file['bucket'] );
 			wp_safe_redirect( add_query_arg( 's3_success', '1', $_SERVER['HTTP_REFERER'] ) ); exit;
@@ -475,15 +536,14 @@ class EDD_Amazon_S3 {
 		}
 	}
 
-	public static function upload_file( $file = array() ) {
+	public function upload_file( $file = array() ) {
 
-		$s3                = new S3( self::$access_id, self::$secret_key, false, self::get_host() );
-		$bucket            = empty( $file['bucket'] ) ? self::$bucket : $file['bucket'];
+		$bucket            = empty( $file['bucket'] ) ? $this->bucket : $file['bucket'];
 
-		$resource          = $s3->inputFile( $file['file'] );
+		$resource          = $this->s3->inputFile( $file['file'] );
 		$resource['type']  = $file['type'];
 
-		$push_file = $s3->putObject( $resource, $bucket, $file['name'] );
+		$push_file = $this->s3->putObject( $resource, $bucket, $file['name'] );
 
 		if( $push_file ) {
 			return true;
@@ -492,7 +552,7 @@ class EDD_Amazon_S3 {
 		}
 	}
 
-	public static function requested_file_name( $file_name ) {
+	public function requested_file_name( $file_name ) {
 		if( false !== ( $s3 = strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
 			$s3_part = substr( $file_name, $s3, strlen( $file_name) );
 			$file_name = str_replace( $s3_part, '', $file_name );
@@ -501,12 +561,12 @@ class EDD_Amazon_S3 {
 		return $file_name;
 	}
 
-	public static function get_host() {
+	public function get_host() {
 		global $edd_options;
 		return ! empty( $edd_options['edd_amazon_s3_host'] ) ? trim( $edd_options['edd_amazon_s3_host'] ) : 's3.amazonaws.com';
 	}
 
-	public static function admin_js() {
+	public function admin_js() {
 		?>
 		<script type="text/javascript">
 			//<![CDATA[
@@ -523,18 +583,18 @@ class EDD_Amazon_S3 {
 		<?php
 	}
 
-	public static function generate_url($file, $download_files, $file_key) {
+	public function generate_url($file, $download_files, $file_key) {
 		$file_data = $download_files[$file_key];
 		$file_name = $file_data['file'];
 
 		// Check whether thsi is an Amazon S3 file or not
 		if( ( '/' !== $file_name[0] && strpos( $file_data['file'], 'http://' ) === false && strpos( $file_data['file'], 'https://' ) === false && strpos( $file_data['file'], 'ftp://' ) === false )|| false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
 
-			$expires = self::$default_expiry;
+			$expires = $this->default_expiry;
 
 			if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
 				//we are dealing with a URL prior to Amazon S3 extension 1.4
-				$file_name = self::cleanup_filename($file_name);
+				$file_name = $this->cleanup_filename($file_name);
 
 				//if we still get back the old format then there is something wrong here and just return the old filename
 				if( false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
@@ -542,30 +602,30 @@ class EDD_Amazon_S3 {
 				}
 			}
 
-			return set_url_scheme( self::get_s3_url( $file_name , $expires ), 'http' );
+			return set_url_scheme( $this->get_s3_url( $file_name , $expires ), 'http' );
 		}
 		return $file;
 	}
 
-	public static function add_set_download_method( $download, $email, $payment, $args = array() ) {
+	public function add_set_download_method( $download, $email, $payment, $args = array() ) {
 
 		if( empty( $args ) ) {
 			return;
 		}
 
-		if( self::is_s3_download( $download, $args['file_key'] ) ) {
+		if( $this->is_s3_download( $download, $args['file_key'] ) ) {
 
-			add_filter( 'edd_file_download_method', array( 'EDD_Amazon_S3', 'set_download_method' ) );
+			add_filter( 'edd_file_download_method', array( $this, 'set_download_method' ) );
 
 		}
 
 	}
 
-	public static function set_download_method( $method ) {
+	public function set_download_method( $method ) {
 		return 'redirect';
 	}
 
-	private static function is_s3_download( $download_id = 0, $file_id = 0 ) {
+	private function is_s3_download( $download_id = 0, $file_id = 0 ) {
 
 		$ret   = false;
 		$files = edd_get_download_files( $download_id );
@@ -586,7 +646,7 @@ class EDD_Amazon_S3 {
 		return $ret;
 	}
 
-	public static function cleanup_filename($old_file_name) {
+	public function cleanup_filename($old_file_name) {
 		//strip all amazon querystrings
 		//strip amazon host from url
 
@@ -597,7 +657,7 @@ class EDD_Amazon_S3 {
 		return $old_file_name;
 	}
 
-	public static function add_settings( $settings ) {
+	public function add_settings( $settings ) {
 
 		$settings[] = array(
 					'id'   => 'amazon_s3_settings',
@@ -648,7 +708,7 @@ class EDD_Amazon_S3 {
 		return $settings;
 	}
 
-	public static function api_keys_entered() {
+	public function api_keys_entered() {
 
 		$id  = edd_get_option( 'edd_amazon_s3_id' );
 		$key = edd_get_option( 'edd_amazon_s3_key' );
@@ -693,7 +753,7 @@ class EDD_Amazon_S3 {
 					'type' => get_post_mime_type( $attachment_id )
 				);
 
-				self::upload_file( $args );
+				$this->upload_file( $args );
 
 				$files[ $key ]['file'] = edd_get_option( 'edd_amazon_s3_bucket' ) . '/' . $folder . basename( $file['file'] );
 
@@ -710,6 +770,6 @@ class EDD_Amazon_S3 {
 }
 
 function edd_s3_load() {
-	$GLOBALS['edd_s3'] = new EDD_Amazon_S3();
+	$GLOBALS['edd_s3'] = EDD_Amazon_S3::get_instance();
 }
 add_action( 'plugins_loaded', 'edd_s3_load' );
