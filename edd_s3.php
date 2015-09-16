@@ -3,7 +3,7 @@
 Plugin Name: Easy Digital Downloads - Amazon S3
 Plugin URI: http://easydigitaldownloads.com/extension/amazon-s3/
 Description: Amazon S3 integration with EDD.  Allows you to upload or download directly from your S3 bucket. Configure on Settings > Extensions tab
-Version: 2.1.9
+Version: 2.2
 Author: Justin Sainton, Pippin Williamson & Brad Vincent
 Author URI:  http://www.zao.is
 Contributors: JustinSainton, mordauk
@@ -82,7 +82,7 @@ class EDD_Amazon_S3 {
 	private function constants() {
 
 		// plugin version
-		define( 'EDD_AS3_VERSION', '2.1.9' );
+		define( 'EDD_AS3_VERSION', '2.2' );
 
 		// Set the core file path
 		define( 'EDD_AS3_FILE_PATH', dirname( __FILE__ ) );
@@ -770,6 +770,14 @@ class EDD_Amazon_S3 {
 }
 
 function edd_s3_load() {
-	$GLOBALS['edd_s3'] = EDD_Amazon_S3::get_instance();
+	if( version_compare( PHP_VERSION, '5.3', '<' ) ) {
+		add_action( 'admin_notices', 'edd_s3_below_php_version_notice' );
+	} else {
+		$GLOBALS['edd_s3'] = EDD_Amazon_S3::get_instance();
+	}
 }
 add_action( 'plugins_loaded', 'edd_s3_load' );
+
+function edd_s3_below_php_version_notice() {
+	echo '<div class="error"><p>' . __( 'Your version of PHP is below the minimum version of PHP required by Easy Digital Downloads - Amazon S3. Please contact your host and request that your version be upgraded to 5.3 or later.', 'edd_s3' ) . '</p></div>';
+}
