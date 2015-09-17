@@ -773,7 +773,3 @@ function edd_s3_load() {
 	$GLOBALS['edd_s3'] = EDD_Amazon_S3::get_instance();
 }
 add_action( 'plugins_loaded', 'edd_s3_load' );
-
-function edd_s3_below_php_version_notice() {
-	echo '<div class="error"><p>' . __( 'Your version of PHP is below the minimum version of PHP required by Easy Digital Downloads - Amazon S3. Please contact your host and request that your version be upgraded to 5.3 or later.', 'edd_s3' ) . '</p></div>';
-}
