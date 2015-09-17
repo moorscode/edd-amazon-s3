@@ -770,11 +770,7 @@ class EDD_Amazon_S3 {
 }
 
 function edd_s3_load() {
-	if( version_compare( PHP_VERSION, '5.3', '<' ) ) {
-		add_action( 'admin_notices', 'edd_s3_below_php_version_notice' );
-	} else {
-		$GLOBALS['edd_s3'] = EDD_Amazon_S3::get_instance();
-	}
+	$GLOBALS['edd_s3'] = EDD_Amazon_S3::get_instance();
 }
 add_action( 'plugins_loaded', 'edd_s3_load' );
 
