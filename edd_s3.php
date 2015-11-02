@@ -177,6 +177,7 @@ class EDD_Amazon_S3 {
 		// intercept the file download and generate an expiring link
 		add_filter( 'edd_requested_file', array( $this, 'generate_url' ), 10, 3 );
 		add_action( 'edd_process_verified_download', array( $this, 'add_set_download_method' ), 10, 4 );
+		add_action( 'edd_sl_before_package_download', array( $this, 'all_sl_set_download_method' ), 10, 4 );
 
 		// add some javascript to the admin
 		add_action( 'admin_head', array( $this, 'admin_js' ) );
@@ -583,8 +584,19 @@ class EDD_Amazon_S3 {
 		<?php
 	}
 
-	public function generate_url($file, $download_files, $file_key) {
-		$file_data = $download_files[$file_key];
+	public function generate_url( $file, $download_files, $file_key ) {
+		$file_key  = '' === $file_key ? 0 : $file_key;
+
+		if ( ! array_key_exists( $file_key, $download_files ) ) {
+			return $file;
+		}
+
+		$file_data = $download_files[ $file_key ];
+
+		if ( empty( $file_data['file'] ) ) {
+			return $file;
+		}
+
 		$file_name = $file_data['file'];
 
 		// Check whether thsi is an Amazon S3 file or not
@@ -614,6 +626,29 @@ class EDD_Amazon_S3 {
 		}
 
 		if( $this->is_s3_download( $download, $args['file_key'] ) ) {
+
+			add_filter( 'edd_file_download_method', array( $this, 'set_download_method' ) );
+
+		}
+
+	}
+
+	/**
+	 * Compability for setting the redirect method with the Software Licensing toknized URLs
+	 *
+	 * @since  2.3
+	 * @param  int $id         The Download ID
+	 * @param  string $hash    The Hash passed to SL
+	 * @param  string $license The License ID requesting the update package
+	 * @param  int    $expires The expiration of the link
+	 * @return void
+	 */
+	public function all_sl_set_download_method( $id, $hash, $license, $expires ) {
+
+		$license_id = edd_software_licensing()->get_license_by_key( $license );
+		$price_id   = edd_software_licensing()->get_price_id( $license_id );
+
+		if( $this->is_s3_download( $id, $price_id ) ) {
 
 			add_filter( 'edd_file_download_method', array( $this, 'set_download_method' ) );
 
@@ -769,6 +804,11 @@ class EDD_Amazon_S3 {
 	}
 }
 
+/**
+ * Load the S3 plugin for EDD
+ *
+ * @return void
+ */
 function edd_s3_load() {
 	$GLOBALS['edd_s3'] = EDD_Amazon_S3::get_instance();
 }
