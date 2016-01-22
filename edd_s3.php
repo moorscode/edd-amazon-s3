@@ -181,7 +181,7 @@ class EDD_Amazon_S3 {
 		// add some javascript to the admin
 		add_action( 'admin_head', array( $this, 'admin_js' ) );
 
-		add_filter( 'fes_validate_multiple_pricing_field', array( $this, 'bad_url' ), 10, 2 );
+		add_filter( 'fes_validate_multiple_pricing_field_files', array( $this, 'valid_url' ), 10, 2 );
 		add_filter( 'fes_pre_files_save', array( $this, 'send_fes_files_to_s3' ), 10, 2 );
 
 		add_action( 'admin_notices', array( $this, 'show_admin_notices' ), 10 );
@@ -724,19 +724,19 @@ class EDD_Amazon_S3 {
 	/**
 	 * Tells FES that Amazon S3 URLs are valid
 	 *
-	 * @since 2.2.1
+	 * @since 2.2.2
 	 *
 	 * @access public
 	 * @return bool
 	 */
-	public function bad_url( $error, $value = '' ) {
+	public function valid_url( $valid, $value = '' ) {
 
-		if( $error ) {
+		if( ! $valid && is_string( $value ) ) {
 			$ext   = edd_get_file_extension( $value );
-			$error = ! empty( $ext ); 
+			$valid = ! empty( $ext ); 
 		}
 
-		return $error;
+		return $valid;
 	}
 
 
