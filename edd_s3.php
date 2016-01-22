@@ -724,7 +724,7 @@ class EDD_Amazon_S3 {
 	/**
 	 * Tells FES that Amazon S3 URLs are valid
 	 *
-	 * @since 2.1
+	 * @since 2.2.1
 	 *
 	 * @access public
 	 * @return bool
