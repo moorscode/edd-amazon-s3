@@ -727,11 +727,7 @@ class EDD_Amazon_S3 {
 		$id  = edd_get_option( 'edd_amazon_s3_id' );
 		$key = edd_get_option( 'edd_amazon_s3_key' );
 
-		if( empty( $id ) || empty( $key ) ) {
-			return false;
-		}
-
-		return true;
+		return ( ! empty( $id ) && ! empty( $key ) );
 	}
 
 	/**
