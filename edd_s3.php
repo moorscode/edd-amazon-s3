@@ -467,42 +467,60 @@ class EDD_Amazon_S3 {
 
 	public function get_s3_url( $filename, $expires = 5 ) {
 
-		if( false !== strpos( $filename, '/' ) ) {
+		$scheme = parse_url( $filename, PHP_URL_SCHEME );
+		if ( ! is_null($scheme) ) {
+			$host = parse_url( $filename, PHP_URL_HOST );
 
-			$parts    = explode( '/', $filename );
-			$bucket   = $parts[0];
-			$buckets  = $this->get_s3_buckets();
+			if ( false !== strpos( $host, $this->get_host() ) ) {
+				$bucket = str_replace( '.' . $this->get_host(), '', $host );
 
-			if ( empty( $buckets ) ) {
-				$errors = edd_get_errors();
-				if ( array_key_exists( 'edd-amazon-s3', $errors ) ) {
-					if ( current_user_can( 'manage_options' ) ) {
-						wp_die( $errors['edd-amazon-s3'] );
-					} else {
-						wp_die( __( 'Error retrieving file. Please contact the site administrator.', 'edd_s3' ) );
-					}
+				if ( $this->is_s3_bucket( $bucket ) ) {
+					$filename = parse_url( $filename, PHP_URL_PATH );
+				}
+				else {
+					unset( $bucket );
 				}
 			}
+		}
+		else {
+			if( strpos( $filename, '/' ) > 0 ) {
+				$parts  = explode( '/', $filename );
+				$bucket = $parts[0];
 
-			if( in_array( $bucket, $buckets ) ) {
-
-				$filename = preg_replace( '#^' . $parts[0] . '/#', '', $filename, 1 );
-
-			} else {
-
-				$bucket = $this->bucket;
-
+				if ( $this->is_s3_bucket( $bucket ) ) {
+					$filename = preg_replace( '#^' . $bucket . '/#', '', $filename, 1 );
+				}
+				else {
+					unset( $bucket );
+				}
 			}
-
-		} else {
-
-			$bucket = $this->bucket;
-
 		}
 
-		$url = $this->s3->getAuthenticatedURL( $bucket, $filename, ( 60 * $expires ), false, is_ssl() );
+		if ( ! isset($bucket) ) {
+			$bucket = $this->bucket;
+		}
 
-		return $url;
+		$filename = ltrim( $filename, '/' );
+
+		return $this->s3->getAuthenticatedURL( $bucket, $filename, ( 60 * $expires ), false, is_ssl() );
+	}
+
+	private function is_s3_bucket( $bucket ) {
+		$buckets = $this->get_s3_buckets();
+
+		if ( empty( $buckets ) ) {
+			$errors = edd_get_errors();
+			if ( array_key_exists( 'edd-amazon-s3', $errors ) ) {
+				if ( current_user_can( 'manage_options' ) ) {
+					wp_die( $errors['edd-amazon-s3'] );
+				}
+				else {
+					wp_die( __( 'Error retrieving file. Please contact the site administrator.', 'edd_s3' ) );
+				}
+			}
+		}
+
+		return in_array( $bucket, $buckets );
 	}
 
 	public function upload_handler() {
@@ -661,14 +679,36 @@ class EDD_Amazon_S3 {
 	}
 
 	public function cleanup_filename($old_file_name) {
-		//strip all amazon querystrings
-		//strip amazon host from url
+		// strip all amazon query strings
+		// strip host from url
 
-		if ( $url = parse_url( $old_file_name ) ) {
-			return ltrim( $url['path'], '/' );
+		$url = parse_url( $old_file_name );
+		if ( is_array( $url ) ) {
+			unset( $url['query'] );
+
+			// If the bucket is present in the URL; return full URL.
+			if ( strpos( $url['host'], $this->get_host() ) > 0 ) {
+				return $this->build_url( $url );
+			}
+
+			// Just return the path.
+			return rtrim( $url['path'], '/' );
 		}
 
 		return $old_file_name;
+	}
+
+	private function build_url(array $parts) {
+		return (isset($parts['scheme']) ? "{$parts['scheme']}:" : '') .
+		       ((isset($parts['user']) || isset($parts['host'])) ? '//' : '') .
+		       (isset($parts['user']) ? "{$parts['user']}" : '') .
+		       (isset($parts['pass']) ? ":{$parts['pass']}" : '') .
+		       (isset($parts['user']) ? '@' : '') .
+		       (isset($parts['host']) ? "{$parts['host']}" : '') .
+		       (isset($parts['port']) ? ":{$parts['port']}" : '') .
+		       (isset($parts['path']) ? "{$parts['path']}" : '') .
+		       (isset($parts['query']) ? "?{$parts['query']}" : '') .
+		       (isset($parts['fragment']) ? "#{$parts['fragment']}" : '');
 	}
 
 	public function add_settings( $settings ) {
