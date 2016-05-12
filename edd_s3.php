@@ -546,11 +546,7 @@ class EDD_Amazon_S3 {
 
 		$push_file = $this->s3->putObject( $resource, $bucket, $file['name'] );
 
-		if( $push_file ) {
-			return true;
-		} else {
-			return false;
-		}
+		return ( $push_file );
 	}
 
 	public function requested_file_name( $file_name ) {
@@ -588,8 +584,8 @@ class EDD_Amazon_S3 {
 		$file_data = $download_files[$file_key];
 		$file_name = $file_data['file'];
 
-		// Check whether thsi is an Amazon S3 file or not
-		if( ( '/' !== $file_name[0] && strpos( $file_data['file'], 'http://' ) === false && strpos( $file_data['file'], 'https://' ) === false && strpos( $file_data['file'], 'ftp://' ) === false )|| false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
+		// Check whether this is an Amazon S3 file or not
+		if ( $this->is_s3_file( $file_name ) ) {
 
 			$expires = $this->default_expiry;
 
@@ -605,6 +601,7 @@ class EDD_Amazon_S3 {
 
 			return set_url_scheme( $this->get_s3_url( $file_name , $expires ), 'http' );
 		}
+		
 		return $file;
 	}
 
@@ -627,24 +624,40 @@ class EDD_Amazon_S3 {
 	}
 
 	private function is_s3_download( $download_id = 0, $file_id = 0 ) {
-
-		$ret   = false;
+		
 		$files = edd_get_download_files( $download_id );
 
-		if( isset( $files[ $file_id ] ) ) {
-
-			$file_name = $files[ $file_id ]['file'];
-
-			// Check whether thsi is an Amazon S3 file or not
-			if( ( '/' !== $file_name[0] && strpos( $file_name, 'http://' ) === false && strpos( $file_name, 'https://' ) === false && strpos( $file_name, 'ftp://' ) === false ) || false !== ( strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
-
-				$ret = true;
-
+		if( ! isset( $files[ $file_id ] ) ) {
+			return false;
+		}
+		
+		return $this->is_s3_file( $files[ $file_id ]['file'] );
+	}
+	
+	private function is_s3_file( $file_name ) {
+		$host = parse_url( $file_name, PHP_URL_HOST );
+		if ( false !== $host ) {
+			/**
+			 * If the s3 host is already present in the hostname of the file
+			 * we are sure it is an s3 file.
+			 */
+			if ( 0 !== strpos( $host, $this->get_host() ) ) {
+				return true;
 			}
-
 		}
 
-		return $ret;
+		/**
+		 * If we have an access key ID it is an s3 file.
+		 */
+		if ( false !== strpos( $file_name, 'AWSAccessKeyId' ) ) {
+			return true;
+		}
+
+		/**
+		 * When the file is not an URL (absolute or relative) it is an s3 file.
+		 */
+		$scheme = parse_url( $file_name, PHP_URL_SCHEME );
+		return '/' !== $file_name[0] && is_null($scheme);
 	}
 
 	public function cleanup_filename($old_file_name) {
