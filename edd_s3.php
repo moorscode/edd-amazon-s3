@@ -44,7 +44,6 @@ class EDD_Amazon_S3 {
 	 * @since 1.0
 	 *
 	 * @access public
-	 * @return void
 	 */
 	private function __construct() {
 
@@ -114,14 +113,14 @@ class EDD_Amazon_S3 {
 
 	}
 
-		/**
-		 * Internationalization
-		 *
-		 * @access      public
-		 * @since       2.1.9
-		 * @return      void
-		 */
-		public function load_textdomain() {
+	/**
+	 * Internationalization
+	 *
+	 * @access      public
+	 * @since       2.1.9
+	 * @return      void
+	 */
+	public function load_textdomain() {
 		// Set filter for language directory
 		$lang_dir = EDD_AS3_FILE_PATH . '/languages/';
 		$lang_dir = apply_filters( 'edd_amazon_s3_languages_directory', $lang_dir );
@@ -131,20 +130,22 @@ class EDD_Amazon_S3 {
 		$mofile = sprintf( '%1$s-%2$s.mo', 'edd-amazon-s3', $locale );
 
 		// Setup paths to current locale file
-		$mofile_local   = $lang_dir . $mofile;
-		$mofile_global  = WP_LANG_DIR . '/edd-amazon-s3/' . $mofile;
+		$mofile_local  = $lang_dir . $mofile;
+		$mofile_global = WP_LANG_DIR . '/edd-amazon-s3/' . $mofile;
 
-		if( file_exists( $mofile_global ) ) {
+		if ( file_exists( $mofile_global ) ) {
 			// Look in global /wp-content/languages/edd-amazon-s3/ folder
 			load_textdomain( 'edd_s3', $mofile_global );
-		} elseif( file_exists( $mofile_local ) ) {
+		}
+		elseif ( file_exists( $mofile_local ) ) {
 			// Look in local /wp-content/plugins/edd-amazon-s3/languages/ folder
 			load_textdomain( 'edd_s3', $mofile_local );
-		} else {
+		}
+		else {
 			// Load the default language files
 			load_plugin_textdomain( 'edd_s3', false, $lang_dir );
 		}
-		}
+	}
 
 	/**
 	 * Run action and filter hooks.
@@ -157,7 +158,7 @@ class EDD_Amazon_S3 {
 	private function init() {
 
 		if( class_exists( 'EDD_License' ) ) {
-			$edds3_license = new EDD_License( __FILE__, EDD_AS3_SL_PRODUCT_NAME, EDD_AS3_VERSION, 'Pippin Williamson', 'edd_amazon_s3_license_key' );
+			new EDD_License( __FILE__, EDD_AS3_SL_PRODUCT_NAME, EDD_AS3_VERSION, 'Pippin Williamson', 'edd_amazon_s3_license_key' );
 		}
 
 		//Adds Media Tab
@@ -470,28 +471,23 @@ class EDD_Amazon_S3 {
 		$scheme = parse_url( $filename, PHP_URL_SCHEME );
 		if ( ! is_null($scheme) ) {
 			$host = parse_url( $filename, PHP_URL_HOST );
-
 			if ( false !== strpos( $host, $this->get_host() ) ) {
-				$bucket = str_replace( '.' . $this->get_host(), '', $host );
+				$test_bucket = str_replace( '.' . $this->get_host(), '', $host );
 
-				if ( $this->is_s3_bucket( $bucket ) ) {
+				if ( $this->is_s3_bucket( $test_bucket ) ) {
+					$bucket = $test_bucket;
 					$filename = parse_url( $filename, PHP_URL_PATH );
-				}
-				else {
-					unset( $bucket );
 				}
 			}
 		}
 		else {
 			if( strpos( $filename, '/' ) > 0 ) {
 				$parts  = explode( '/', $filename );
-				$bucket = $parts[0];
+				$first_part = $parts[0];
 
-				if ( $this->is_s3_bucket( $bucket ) ) {
+				if ( $this->is_s3_bucket( $first_part ) ) {
+					$bucket = $first_part;
 					$filename = preg_replace( '#^' . $bucket . '/#', '', $filename, 1 );
-				}
-				else {
-					unset( $bucket );
 				}
 			}
 		}
@@ -562,16 +558,12 @@ class EDD_Amazon_S3 {
 		$resource          = $this->s3->inputFile( $file['file'] );
 		$resource['type']  = $file['type'];
 
-		$push_file = $this->s3->putObject( $resource, $bucket, $file['name'] );
-
-		return ( $push_file );
+		return $this->s3->putObject( $resource, $bucket, $file['name'] );
 	}
 
 	public function requested_file_name( $file_name ) {
 		if( false !== ( $s3 = strpos( $file_name, 'AWSAccessKeyId' ) ) ) {
-			$s3_part = substr( $file_name, $s3, strlen( $file_name) );
-			$file_name = str_replace( $s3_part, '', $file_name );
-			$file_name = substr( $file_name, 0, -1);
+			$file_name = substr( $file_name, 0, $s3 - 1 );
 		}
 		return $file_name;
 	}
@@ -679,11 +671,11 @@ class EDD_Amazon_S3 {
 	}
 
 	public function cleanup_filename($old_file_name) {
-		// strip all amazon query strings
-		// strip host from url
 
 		$url = parse_url( $old_file_name );
 		if ( is_array( $url ) ) {
+
+			// Strip all amazon query strings.
 			unset( $url['query'] );
 
 			// If the bucket is present in the URL; return full URL.
@@ -691,7 +683,7 @@ class EDD_Amazon_S3 {
 				return $this->build_url( $url );
 			}
 
-			// Just return the path.
+			// Strip host from url.
 			return rtrim( $url['path'], '/' );
 		}
 
