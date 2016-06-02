@@ -690,17 +690,46 @@ class EDD_Amazon_S3 {
 		return $old_file_name;
 	}
 
+	/**
+	 * Build an URL by parts of the parse_url function
+	 * @see http://php.net/parse_url
+	 *
+	 * @param array $parts Parts of the URL
+	 *
+	 * @return string URL build from the parts
+	 */
 	private function build_url(array $parts) {
-		return (isset($parts['scheme']) ? "{$parts['scheme']}:" : '') .
-		       ((isset($parts['user']) || isset($parts['host'])) ? '//' : '') .
-		       (isset($parts['user']) ? "{$parts['user']}" : '') .
-		       (isset($parts['pass']) ? ":{$parts['pass']}" : '') .
-		       (isset($parts['user']) ? '@' : '') .
-		       (isset($parts['host']) ? "{$parts['host']}" : '') .
-		       (isset($parts['port']) ? ":{$parts['port']}" : '') .
-		       (isset($parts['path']) ? "{$parts['path']}" : '') .
-		       (isset($parts['query']) ? "?{$parts['query']}" : '') .
-		       (isset($parts['fragment']) ? "#{$parts['fragment']}" : '');
+		/*
+		 * The total URL can be the following
+		 *
+		 * http://user:password@example.com:port/path?query#fragment
+		 *
+		 * All of these parts are optional
+		 */
+
+		// Set schema.
+		$url = ( isset( $parts['scheme'] ) ? "{$parts['scheme']}:" : '' ) .
+		       ( ( isset( $parts['user'] ) || isset( $parts['host'] ) ) ? '//' : '' );
+
+		// Add user + password information.
+		$url .= ( isset( $parts['user'] ) ? "{$parts['user']}" : '' ) .
+		        ( isset( $parts['pass'] ) ? ":{$parts['pass']}" : '' ) .
+		        ( isset( $parts['user'] ) ? '@' : '' );
+
+		// Add host (domain) and port.
+		$url .= ( isset( $parts['host'] ) ? "{$parts['host']}" : '' ) .
+		        ( isset( $parts['port'] ) && isset( $parts['host'] ) ? ":{$parts['port']}" : '' );
+
+		// Add path.
+		$url .= ( isset( $parts['path'] ) ? "{$parts['path']}" : '' );
+
+		// Add query part.
+		$url .= ( isset( $parts['query'] ) ? "?{$parts['query']}" : '' );
+
+		// Add fragment if present.
+		$url .= ( isset( $parts['fragment'] ) ? "#{$parts['fragment']}" : '' );
+
+		return $url;
 	}
 
 	public function add_settings( $settings ) {
